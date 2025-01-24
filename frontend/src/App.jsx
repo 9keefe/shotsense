@@ -1,21 +1,43 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import NavBar from "./components/NavBar";
+import Signin from "./pages/Signin";
+import Home from "./pages/Home";
+import Record from "./pages/Record";
+import Profile from "./pages/Profile";
+import Welcome from "./pages/Welcome";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 
 function App() {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    axios.get("http://127.0.0.1:5000/api/test")
-      .then((response) => setMessage(response.data.message))
-      .catch((error) => console.error(error));
-  }, []);
-
   return (
-    <div className="h-screen w-screen bg-black flex justify-center items-center">
-
-        <button className="text-white px-4 py-2 text-xl rounded font-medium focus:ring ring-black ring-opacity-10">{message}</button>
-    </div>
+    <Router>
+      <DisplayNavBar />
+      
+      <Routes>
+        <Route path="/" element={<Welcome />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/record" element={<Record />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/signin" element={<Signin />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+      </Routes>
+    </Router>
   );
+}
+
+function DisplayNavBar() {
+  const location = useLocation();
+
+  const excludedRoutes = ["/", "/signin", "/signup", "/forgot-password"];
+
+  // Check if the current route is in the excluded routes
+  if (excludedRoutes.includes(location.pathname)) {
+    return null; // Do not render NavBar
+  }
+
+  return <NavBar />;
 }
 
 export default App;
