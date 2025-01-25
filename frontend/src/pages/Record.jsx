@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 export default function Record() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [shootingArm, setShootingArm] = useState("RIGHT");
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -22,16 +24,20 @@ export default function Record() {
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    setIsLoading(true);
+
     const formData = new FormData();
     formData.append("video", selectedFile);
+    formData.append("shootingArm", shootingArm);
 
     try {
-      const res = await fetch("/upload", {
+      const res = await fetch("http://127.0.0.1:5000/upload", {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
+        setIsLoading(false);
         const { error } = await res.json();
         alert("Upload error: " + error);
         return;
@@ -39,15 +45,17 @@ export default function Record() {
 
       // retrieve JSON data
       const data = await res.json();
-      const { release_angle, processed_url } = data;
+      setIsLoading(false);
 
       navigate("/analysis", {
         state: {
-          releaseAngle: release_angle,
-          processed_url: processed_url
+          originalVideoUrl: data.originalVideoUrl,
+          metrics: data.metrics,
         },
       });
+
     } catch (err) {
+      setIsLoading(false);
       console.err(err);
       alert("Upload failed, check console for details.");
     }
@@ -80,6 +88,35 @@ export default function Record() {
             </button>
 
             <h2 className="text-lg font-bold text-gray-800 mb-4">Upload a Video</h2>
+            
+            {/* Shooting Arm Toggle */}
+            <div className="flex items-center mb-4">
+              <label className="mr-2 text-gray-700">Shooting Arm:</label>
+              <div className="space-x-4">
+                <label>
+                  <input
+                    type="radio"
+                    name="shootingArm"
+                    value="RIGHT"
+                    checked={shootingArm === "RIGHT"}
+                    onChange={(e) => setShootingArm(e.target.value)}
+                  />
+                  <span className="ml-1">Right</span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="shootingArm"
+                    value="LEFT"
+                    checked={shootingArm === "LEFT"}
+                    onChange={(e) => setShootingArm(e.target.value)}
+                  />
+                  <span className="ml-1">Left</span>
+                </label>
+              </div>
+            </div>
+            
+            {/* file input */}
             <div className="flex flex-col items-center">
               <input
                 type="file"
@@ -94,6 +131,15 @@ export default function Record() {
                 Upload
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg">
+            <p className="text-gray-700">Processing... Please wait</p>
           </div>
         </div>
       )}
