@@ -3,7 +3,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 
-from utils import ShootingAnalyzer
+from .utils import ShootingAnalyzer
 
 mp_pose = mp.solutions.pose
 
