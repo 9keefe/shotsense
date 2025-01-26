@@ -33,7 +33,7 @@ def dbinit():
   # test users
 
   user_list = [
-    User("Keefe", "test@email.com", "password",)
+    User("Test", "test@email.com", "scrypt:32768:8:1$07M9upXmM8iTH641$fd3243b77a4893fefcb1dd378aee0c3a4afd4326804c5498321d3d831f21d616d4243656828f22da5671c096d3491575d53deb5063cba023de4dceff9931cbca",)
   ]
   db.session.add_all(user_list)
   db.session.commit()

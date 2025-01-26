@@ -1,11 +1,42 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmpassword: "",
+  });
+  
+  const [error, setError] = useState("");
 
-  const handleSignIn = () => {
-    navigate("/home");
+  // handle input changes
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Check if passwords match
+    if (formData.password !== formData.confirmpassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      const response = await axios.post("http://127.0.0.1:5000/signup", formData, {
+        withCredentials: true,
+      });
+      console.log("Response:", response.data);
+      navigate("/home");
+    } catch (err) {
+      console.error("Error response:", err.response);
+      setError(err.response?.data?.error || "Something went wrong. Please try again.");
+    }
   }
 
   return (
@@ -17,7 +48,10 @@ export default function Signup() {
         <p className="text-3xl text-white mt-5">Create your account.</p>
       </div>
 
-      <div className="flex-1 w-full max-w-lg bg-white rounded-t-3xl shadow-lg p-8 pt-16">
+      <form 
+        className="flex-1 w-full max-w-lg bg-white rounded-t-3xl shadow-lg p-8 pt-16"
+        onSubmit={handleSubmit}
+      >
         <div className="space-y-4">
 
           <div>
@@ -32,6 +66,10 @@ export default function Signup() {
               id="name"
               placeholder="john smith"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -47,6 +85,10 @@ export default function Signup() {
               id="email"
               placeholder="name@example.com"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -62,31 +104,38 @@ export default function Signup() {
               id="password"
               placeholder="password"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
           </div>
 
           <div>
             <label
-              htmlFor="confirm-password"
+              htmlFor="confirmpassword"
               className="block text-sm font-semibold text-gray-600"
             >
               Confirm Password
             </label>
             <input
               type="password"
-              id="confirm-password"
+              id="confirmpassword"
               placeholder="confirm password"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="confirmpassword"
+              value={formData.confirmpassword}
+              onChange={handleChange}
+              required
             />
           </div>
 
-          {/* <div className="bg-red-500 w-full p-2 rounded">
-            <p className="text-white"></p>
-          </div> */}
+          {/* Display error message */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <div className="pt-8 pb-8">
             <button 
-              onClick={handleSignIn}
+              type="submit"
               className="w-full py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600"
             >
               SIGN UP
@@ -103,7 +152,7 @@ export default function Signup() {
             </Link>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

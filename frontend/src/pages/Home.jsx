@@ -1,6 +1,29 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
 
 export default function Home() {
+  const [name, setName] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:5000/user", {
+          withCredentials: true,
+        });
+        setName(response.data.name);
+      } catch (error) {
+        console.error("Failed to fetch profile:", error.response?.data?.error || error.message);
+        navigate("/signin");
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+
   return (
     <div className="bg-orange-500 min-h-screen flex flex-col">
 
@@ -9,7 +32,7 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-white leading-none">
             Welcome,
           </h1>
-          <p className="text-3xl text-white">Keefe</p>
+          <p className="text-3xl text-white">{name}</p>
         </div>
 
         <div className="w-16 h-16 bg-white rounded-full"/>

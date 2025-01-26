@@ -1,13 +1,34 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Signin() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
 
-  const handleSignIn = () => {
-    navigate("/home");
+  // handle input changes
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try { 
+      const response = await axios.post("http://127.0.0.1:5000/signin", formData, {
+        withCredentials: true,
+      });
+      console.log("Response:", response.data);
+      navigate("/home")
+    } catch (err) {
+      console.error("Error response", err.response);
+      setError(err.response?.data?.error || "Something went wrong. Please try again.");
+    }
+  }
 
   return (
     <div className="bg-orange-500 min-h-screen flex flex-col items-center">
@@ -18,7 +39,10 @@ export default function Signin() {
         <p className="text-3xl text-white mt-5">Sign in.</p>
       </div>
 
-      <div className="flex-1 w-full max-w-lg bg-white rounded-t-3xl shadow-lg p-8 pt-16">
+      <form
+        className="flex-1 w-full max-w-lg bg-white rounded-t-3xl shadow-lg p-8 pt-16"
+        onSubmit={handleSubmit}
+      >
         <div className="space-y-4">
 
           <div>
@@ -33,6 +57,10 @@ export default function Signin() {
               id="email"
               placeholder="name@example.com"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -48,6 +76,10 @@ export default function Signin() {
               id="password"
               placeholder="password"
               className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -60,9 +92,12 @@ export default function Signin() {
             </Link>
           </div>
 
+          {/* Display error message */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
           <div className="py-8">
             <button
-              onClick={handleSignIn} 
+              type="submit"
               className="w-full py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 shadow-md"
             >
               SIGN IN
@@ -79,7 +114,7 @@ export default function Signin() {
             </Link>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
