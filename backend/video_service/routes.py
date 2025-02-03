@@ -3,7 +3,11 @@ import uuid
 import pandas as pd
 import numpy as np
 import joblib
-from flask import jsonify, request, send_from_directory
+import json
+from datetime import datetime
+from flask import jsonify, request, send_from_directory, session
+from db_schema import db, Analysis
+
 
 from .analysis import analyse_video
 
@@ -27,6 +31,9 @@ def save_uploaded_file(file, upload_folder):
   return save_path
 
 def upload_video():
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorized"}), 401
+
   if "video" not in request.files:
     return jsonify({"error": "No video file found"}), 400
   file = request.files["video"]
@@ -42,19 +49,29 @@ def upload_video():
 
   # analyse video
   try:
-    metrics = analyse_video(
-      file_path,
-      shooting_arm=shooting_arm
-    )
-
+    metrics = analyse_video(file_path, shooting_arm=shooting_arm)
     probability, feedback = get_model_feedback(metrics)
 
     if probability is None:
       raise ValueError("Model prediction failed")
+    
+    # create new db record
+    new_analysis = Analysis(
+      user_id = session["user_id"],
+      hashed_filename = os.path.basename(file_path),
+      metrics_json = json.dumps(metrics),
+      make_probability = probability,
+      form_feedback_json = json.dumps(feedback),
+      video_url = f"http://127.0.0.1:5000/videos/{os.path.basename(file_path)}",
+      created_at = datetime.utcnow()
+    )
+    db.session.add(new_analysis)
+    db.session.commit()
 
-    print(probability, feedback)
+
     return jsonify({
       "message": "Analysis complete",
+      "analysis_id": new_analysis.id,
       "metrics": metrics,
       "make_probability": probability,
       "form_feedback": feedback,
@@ -99,8 +116,49 @@ def get_model_feedback(features):
     return None, None
   
 def serve_video(filename):
-  print(filename)
   return send_from_directory(VIDEO_FOLDER, filename)
+
+def get_analyses():
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorised"}), 401
+
+  user_analyses = Analysis.query.filter_by(
+    user_id=session["user_id"]
+  ).order_by(Analysis.created_at.desc()).all()
+
+  analyses_data = []
+  for analysis in user_analyses:
+    analyses_data.append({
+      "id": analysis.id,
+      "created_at": analysis.created_at.isoformat(),
+      "video_url": analysis.video_url,
+      "make_probability": analysis.make_probability,
+      "metrics": json.loads(analysis.metrics_json),
+      "form_feedback": json.loads(analysis.form_feedback_json) 
+    })
+  
+  return jsonify(analyses_data), 200
+
+def get_analysis(analysis_id):
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorised"}), 401
+  
+  analysis = Analysis.query.filter_by(
+    id=analysis_id,
+    user_id=session["user_id"]
+  ).first()
+
+  if not analysis:
+    return jsonify({"error": "Analysis not found"}), 404
+  
+  return jsonify({
+    "id": analysis.id,
+    "video_url": analysis.video_url,
+    "metrics": json.loads(analysis.metrics_json),
+    "make_probability": analysis.make_probability,
+    "form_feedback": json.loads(analysis.form_feedback_json),
+    "created_at": analysis.created_at.isoformat()
+  }), 200
 
 
 

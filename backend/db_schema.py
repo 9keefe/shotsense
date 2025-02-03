@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -25,6 +26,10 @@ class Analysis(db.Model):
   user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
   hashed_filename = db.Column(db.String(255), nullable=False)
   metrics_json = db.Column(db.Text, nullable=False)
+  created_at = db.Column(db.DateTime, default=datetime.utcnow)
+  make_probability = db.Column(db.Float)
+  form_feedback_json = db.Column(db.Text)
+  video_url = db.Column(db.String(512))
 
   # relationship to user
   user = db.relationship("User", back_populates="analyses")

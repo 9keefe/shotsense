@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
+import MyVideos from "./pages/MyVideos";
 
 function App() {
   return (
@@ -19,11 +20,12 @@ function App() {
         <Route path="/" element={<Welcome />} />
         <Route path="/home" element={<Home />} />
         <Route path="/record" element={<Record />} />
-        <Route path="/analysis" element={<Analysis />} />
+        <Route path="/analysis/:id" element={<Analysis />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/signin" element={<Signin />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/my-videos" element={<MyVideos/>} />
       </Routes>
     </Router>
   );

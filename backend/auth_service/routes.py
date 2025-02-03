@@ -44,12 +44,10 @@ def signin():
 
 def user():
   if "user_id" not in session:
-    print("No session found")
     return jsonify({"error": "Unauthorized"}), 401
   
   user = User.query.get(session["user_id"])
   if not user:
-    print("User not found")
     return jsonify({"error": "User not found"}), 404
   
   return jsonify({

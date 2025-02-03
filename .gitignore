@@ -2,3 +2,4 @@ backend/venv
 backend/video_service/videos
 backend/database.sqlite
 frontend/node_modules
+__pycache__

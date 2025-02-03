@@ -58,7 +58,10 @@ export default function Home() {
         </div>
 
         <div className="px-4 mb-4 mx-2">
-          <div className="bg-orange-500 p-8 rounded-3xl hover:bg-orange-600 shadow-md">
+          <div 
+            className="bg-orange-500 p-8 rounded-3xl hover:bg-orange-600 shadow-md cursor-pointer"
+            onClick={() => navigate('/my-videos')}
+          >
             <h3 className="text-white font-semibold mb-10">PAST SESSIONS</h3>
           </div>
         </div>

@@ -34,6 +34,7 @@ export default function Record() {
       const res = await fetch("http://127.0.0.1:5000/upload", {
         method: "POST",
         body: formData,
+        credentials: 'include' // Add this line
       });
 
       if (!res.ok) {
@@ -47,9 +48,9 @@ export default function Record() {
       const data = await res.json();
       setIsLoading(false);
 
-      navigate("/analysis", {
+      navigate(`/analysis/${data.analysis_id}`, {
         state: {
-          originalVideoUrl: data.originalVideoUrl,
+          video_url: data.originalVideoUrl,
           metrics: data.metrics,
           make_probability: data.make_probability,
           form_feedback: data.form_feedback

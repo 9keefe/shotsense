@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 
-from video_service.routes import upload_video, serve_video
+from video_service.routes import upload_video, serve_video, get_analyses, get_analysis
 from auth_service.routes import signup, signin, user
 
 from db_schema import db, dbinit, User, Analysis
@@ -54,6 +54,14 @@ def upload_route():
 @app.route("/videos/<path:filename>")
 def serve_video_route(filename):
     return serve_video(filename)
+
+@app.route("/get-analyses", methods=["GET"])
+def get_analyses_route():
+    return get_analyses()
+
+@app.route("/analyses/<int:analysis_id>", methods=["GET"])
+def get_analysis_route(analysis_id):
+    return get_analysis(analysis_id)
 
 @app.route("/user", methods=["GET"])
 def user_route():
