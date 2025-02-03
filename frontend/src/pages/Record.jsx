@@ -51,6 +51,8 @@ export default function Record() {
         state: {
           originalVideoUrl: data.originalVideoUrl,
           metrics: data.metrics,
+          make_probability: data.make_probability,
+          form_feedback: data.form_feedback
         },
       });
 

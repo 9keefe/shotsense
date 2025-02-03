@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 export default function Analysis() {
   const location = useLocation();
-  const { originalVideoUrl, metrics } = location.state || {};
+  const { originalVideoUrl, metrics, make_probability, form_feedback } = location.state || {};
 
   if (!originalVideoUrl) {
     return (
@@ -34,6 +34,33 @@ export default function Analysis() {
       >
         Your browser does not support video.
       </video>
+
+      {/* Prediction Probability */}
+
+      <div className="max-w-xl bg-white p-4 rounded shadow mb-4 w-full">
+        <h2 className="text-xl font-semibold mb-2">Shot Success Probability</h2>
+        <p className="text-lg">
+          {(make_probability * 100).toFixed(1)}% chance of making the shot
+        </p>
+      </div>
+      
+
+      {/* Form Feedback */}
+      {form_feedback && (
+        <div className="max-w-xl bg-white p-4 rounded shadow mb-4 w-full">
+          <h2 className="text-xl font-semibold mb-2">Key Form Factors</h2>
+          <ul className="space-y-2">
+            {form_feedback.map((item, index) => (
+              <li key={index} className="border-b pb-2">
+                <div className="font-medium">{item.feature}</div>
+                <div>Current Value: {item.value.toFixed(2)}</div>
+                <div>Importance: {(item.importance * 100).toFixed(1)}%</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
 
       <div className="max-w-xl bg-white p-4 rounded shadow">
         <h2 className="text-xl font-semibold mb-2">Metrics</h2>

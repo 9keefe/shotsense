@@ -7,6 +7,26 @@ from .utils import ShootingAnalyzer
 
 mp_pose = mp.solutions.pose
 
+REQUIRED_FEATURES = [
+  "S_avg_knee_bend",
+  "S_max_knee_bend",
+  "S_avg_body_lean",
+  "S_max_body_lean",
+  "S_min_body_lean",
+  "S_frame_count",
+  "R_avg_hip_angle",
+  "R_avg_knee_bend",
+  "R_avg_elbow_angle",
+  "R_max_wrist_height",
+  "R_avg_knee_velocity",
+  "R_frame_count",
+  "F_release_angle",
+  "F_elbow_above_eye",
+  "F_body_lean_angle",
+  "F_hip_angle",
+  "F_knee_angle",
+]
+
 def analyse_video(input_video_path, shooting_arm):
   metrics = {}
 
@@ -135,4 +155,9 @@ def analyse_video(input_video_path, shooting_arm):
   cap.release()
   pose.close()
 
+  for feat in REQUIRED_FEATURES:
+    if feat not in metrics:
+      metrics[feat] = 0.0
+      print(f"Warning: Missing required feature {feat}")
+      
   return metrics
