@@ -80,15 +80,17 @@ export default function Analysis() {
         </p>
       </div>
 
-      {analysisData.form_feedback && (
+      {/* Key Form Factors (Updated Structure) */}
+      {analysisData.form_feedback && analysisData.form_feedback.length > 0 && (
         <div className="max-w-xl bg-white p-4 rounded shadow mb-4 w-full">
-          <h2 className="text-xl font-semibold mb-2">Key Form Factors</h2>
+          <h2 className="text-xl font-semibold mb-2">Key Form Insights</h2>
           <ul className="space-y-2">
             {analysisData.form_feedback.map((item, index) => (
               <li key={index} className="border-b pb-2">
-                <div className="font-medium">{item.feature}</div>
-                <div>Current Value: {item.value?.toFixed(2)}</div>
-                <div>Importance: {(item.importance * 100)?.toFixed(1)}%</div>
+                <div className="font-medium text-gray-800">{item.feature}</div>
+                <div className="text-gray-600">
+                  Score: {item.score?.toFixed(2)}
+                </div>
               </li>
             ))}
           </ul>

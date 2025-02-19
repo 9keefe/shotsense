@@ -6,6 +6,8 @@ class ShootingAnalyzer:
     self.SHOOTING_ARM = SHOOTING_ARM
     self.delta_t = delta_t
     self.shot_completed = False
+
+    self.follow_through_frame_count = 0    
     # main metrics extracted
     self.metrics = {
       "Setup": {
@@ -46,6 +48,7 @@ class ShootingAnalyzer:
     self.release_angle = None
     self.allow_follow_through = False
     self.previous_knee_angle = None
+    self.previous_shoulder_angle = None
     self.knee_velocities = []
     self.shot_ended = False
 
@@ -156,10 +159,16 @@ class ShootingAnalyzer:
       self.allow_follow_through = False
       if self.shot_completed is False:
         # change to setup
-        if shoulder_angle < 45 and elbow_angle < 135 and knee_angle < 170 and shoulder_angle > 6:
+        optimal = (shoulder_angle < 45 and elbow_angle < 135 and knee_angle < 170 and shoulder_angle > 6)
+
+        non_optimal = False
+        if self.previous_shoulder_angle is not None:
+          non_optimal = (shoulder_angle > 10 and shoulder_angle < 60 and (shoulder_angle - 5 > self.previous_shoulder_angle))
+
+        if optimal or non_optimal:
           self.current_phase = "Setup"
           self.release_detected = False
-    
+      self.previous_shoulder_angle = shoulder_angle
     # SETUP phase
     elif self.current_phase == "Setup":
       # set metrics to setup
@@ -174,7 +183,7 @@ class ShootingAnalyzer:
       setup_metrics["frame_count"] += 1
 
       # change to release
-      if elbow_angle < 100 and shoulder_angle > 60 and elbow_angle > 70:
+      if (elbow_angle < 110 and shoulder_angle > 60 and elbow_angle > 70) or (knee_angle > 170 and elbow_angle > 65):
         self.current_phase = "Release"
         self.release_detected = False
 
@@ -187,7 +196,7 @@ class ShootingAnalyzer:
     # RELEASE phase
     elif self.current_phase == "Release":
       # set metrics to release
-      release_metrics = self.metrics["Release"]
+      release_metrics = self.metrics["Release"] 
       follow_through_metrics = self.metrics["Follow-through"]
       
       release_metrics["total_hip_angle"] += hip_angle
@@ -209,7 +218,7 @@ class ShootingAnalyzer:
         self.allow_follow_through = True
 
       # change to follow-through
-      if (elbow_angle > 160 and shoulder_angle > 130 and self.allow_follow_through) or (wrist_angle > 175 and elbow_angle > 140):
+      if (elbow_angle > 160 and shoulder_angle > 130 and self.allow_follow_through) or (wrist_angle > 174 and elbow_angle > 140):
         self.release_detected = True
         self.current_phase = "Follow-through"
         self.allow_follow_through = False
@@ -236,9 +245,9 @@ class ShootingAnalyzer:
     # FOLLOW-THROUGH phase
     elif self.current_phase == "Follow-through":
       self.shot_completed = True
-
+      self.follow_through_frame_count += 1
       # change to null
-      if shoulder_angle < 120 and elbow_angle < 180:
+      if (shoulder_angle < 120 and elbow_angle < 180) or self.follow_through_frame_count >= 35:
         self.current_phase = "Complete"
         self.allow_follow_through = False
         self.shot_ended = True
@@ -317,3 +326,17 @@ class ShootingAnalyzer:
       for metric in metrics_list:
         cv2.putText(frame, metric, (x, y), font, 0.6, color, 2)
         y += 30
+    
+  
+
+      
+
+
+
+
+
+
+  
+
+
+

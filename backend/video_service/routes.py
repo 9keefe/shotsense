@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import json
+import shap
 from datetime import datetime
 from flask import jsonify, request, send_from_directory, session
 from db_schema import db, Analysis
@@ -17,9 +18,15 @@ os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
 MODEL_FOLDER = os.path.join(os.path.dirname(__file__), "model")
 
-MODEL = joblib.load(os.path.join(MODEL_FOLDER, "model.pkl"))
-SCALER = joblib.load(os.path.join(MODEL_FOLDER, "scaler.pkl"))
-FEATURE_COLUMNS = joblib.load(os.path.join(MODEL_FOLDER, "feature_columns.pkl"))
+MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_v2.pkl"))
+MODEL_SHOT = joblib.load(os.path.join(MODEL_FOLDER, "model_shot_v3-hybrid.pkl"))
+OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "opt_cols.pkl"))
+ORIG_COLS = joblib.load(os.path.join(MODEL_FOLDER, "orig_cols.pkl"))
+FORM_COLS = joblib.load(os.path.join(MODEL_FOLDER, "form_cols.pkl"))
+
+MEAN_VALS = joblib.load(os.path.join(MODEL_FOLDER, "mean_vals.pkl"))
+
+HYBRID_COLS = OPT_COLS + FORM_COLS + ORIG_COLS
 
 def save_uploaded_file(file, upload_folder):
   if file.filename == "":
@@ -36,8 +43,8 @@ def upload_video():
 
   if "video" not in request.files:
     return jsonify({"error": "No video file found"}), 400
+  
   file = request.files["video"]
-
   if file.filename == "":
     return jsonify({"error": "Empty filename"}), 400
   
@@ -52,6 +59,9 @@ def upload_video():
     metrics = analyse_video(file_path, shooting_arm=shooting_arm)
     probability, feedback = get_model_feedback(metrics)
 
+    make_probability = float(probability)
+    form_feedback = json.dumps(feedback, default=str)
+
     if probability is None:
       raise ValueError("Model prediction failed")
     
@@ -60,21 +70,20 @@ def upload_video():
       user_id = session["user_id"],
       hashed_filename = os.path.basename(file_path),
       metrics_json = json.dumps(metrics),
-      make_probability = probability,
-      form_feedback_json = json.dumps(feedback),
+      make_probability = make_probability,
+      form_feedback_json = form_feedback,
       video_url = f"http://127.0.0.1:5000/videos/{os.path.basename(file_path)}",
       created_at = datetime.utcnow()
     )
     db.session.add(new_analysis)
     db.session.commit()
 
-
     return jsonify({
       "message": "Analysis complete",
       "analysis_id": new_analysis.id,
       "metrics": metrics,
-      "make_probability": probability,
-      "form_feedback": feedback,
+      "make_probability": make_probability,
+      "form_feedback": form_feedback,
       "originalVideoUrl": f"http://127.0.0.1:5000/videos/{os.path.basename(file_path)}",
     }), 200
 
@@ -86,34 +95,83 @@ def upload_video():
 
 def get_model_feedback(features):
   try:
-    # create dataframe with correct feature order
-    df = pd.DataFrame([features])[FEATURE_COLUMNS]
-    
-    # scale features
-    scaled_features = SCALER.transform(df)
+    # create df from raw pose data
+    df_orig = pd.DataFrame([features])
 
-    # get prediction
-    make_probability = MODEL.predict_proba(scaled_features)[0][1]
+    opt_df = generate_opt_table(df_orig)
 
-    # Get feature importance feedback
-    feature_importances = MODEL.feature_importances_
-    sorted_idx = np.argsort(feature_importances)[::-1]
+    print(opt_df)
+
+    print("\n Generating Form Score...")
+    form_probs = MODEL_FORM.predict_proba(opt_df)
+    form_probs_df = pd.DataFrame(form_probs, columns=["form_0_prob", "form_1_prob", "form_2_prob"])
+    print(f"Form Probabilities: {form_probs}")
+
+    expected_form = (0 * form_probs_df["form_0_prob"] + 
+                      1 * form_probs_df["form_1_prob"] + 
+                      2 * form_probs_df["form_2_prob"]) / 2.0
+    print(f"Expected form: {expected_form}")
+
+    print("\n Generating Form DF...")
+    df_with_form = pd.concat([df_orig.reset_index(drop=True), form_probs_df.reset_index(drop=True)], axis=1)
+    df_with_form["expected_form"] = expected_form.values
+
+    final_df = pd.concat([opt_df.reset_index(drop=True), df_with_form.reset_index(drop=True)], axis=1)
+
+    print("\n Generating Hybrid DF...")
+    df_hybrid = final_df[HYBRID_COLS].copy()
+
+    print("\n Generating Shot Probability...")
+    make_probability = MODEL_SHOT.predict(df_hybrid)[0] + 0.1
+    make_probability = np.clip(make_probability, 0.2, 0.9)
 
     feedback = []
-    for idx in sorted_idx[:3]:
-      feature_name = FEATURE_COLUMNS[idx]
-      current_value = features[feature_name]
-      feedback.append({
-        "feature": feature_name,
-        "value": current_value,
-        "importance": float(feature_importances[idx])
-      })
-    
+    for col in OPT_COLS:
+      val = opt_df.iloc[0][col]
+      feedback.append({"feature": col, "score": val})
+    feedback = sorted(feedback, key=lambda x: x["score"])
+
     return make_probability, feedback
   
   except Exception as e:
     print(f"Model inference error: {str(e)}")
     return None, None
+
+def compare_to_mean(feature_val, mean_val):
+  if mean_val is None or np.isnan(mean_val):
+    return "N/A"
+  if feature_val > mean_val:
+    return "Too high"
+  elif feature_val < mean_val:
+    return "Too low"
+  else:
+    return "Equal"
+  
+def score(val, opt_min, opt_max):
+  if val < opt_min:
+    return -((opt_min - val) ** 2)
+  elif val > opt_max:
+    return -((val - opt_max) ** 2)
+  else:
+    return 100
+
+def generate_opt_table(df):
+  df = df.copy()
+  df['opt_S_min_body_lean'] = df['S_min_body_lean'].apply(lambda x: score(x, -4, 4))
+  df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 140, 170))
+
+  df['opt_R_avg_hip_angle'] = df['R_avg_hip_angle'].apply(lambda x: score(x, 175, 180))
+  df['opt_R_avg_elbow_angle'] = df['R_avg_elbow_angle'].apply(lambda x: score(x, 100, 135))
+  df['opt_R_avg_knee_bend'] = df['R_avg_knee_bend'].apply(lambda x: score(x, 160, 180))
+  df['opt_R_max_wrist_height'] = df['R_max_wrist_height'].apply(lambda x: score(x, 4, 10))
+
+  df['opt_F_release'] = df['F_release_angle'].apply(lambda x: score(x, 62, 70))
+  df['opt_F_elbow_above_eye'] = df['F_elbow_above_eye'].apply(lambda x: score(x, 0, 10))
+  df['opt_F_hip_angle'] = df['F_hip_angle'].apply(lambda x: score(x, 175, 180))
+  df['opt_F_knee_angle'] = df['F_knee_angle'].apply(lambda x: score(x, 168, 180))
+  df['opt_F_body_lean'] = df['F_body_lean_angle'].apply(lambda x: score(x, -1, 2))
+
+  return df[OPT_COLS].copy()
   
 def serve_video(filename):
   return send_from_directory(VIDEO_FOLDER, filename)
