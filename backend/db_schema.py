@@ -30,6 +30,10 @@ class Analysis(db.Model):
   make_probability = db.Column(db.Float)
   form_feedback_json = db.Column(db.Text)
   video_url = db.Column(db.String(512))
+  original_video_url = db.Column(db.String(512))
+  setup_frame_url = db.Column(db.String(512))
+  release_frame_url = db.Column(db.String(512))
+  follow_frame_url = db.Column(db.String(512))
 
   # relationship to user
   user = db.relationship("User", back_populates="analyses")

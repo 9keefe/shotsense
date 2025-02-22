@@ -51,9 +51,9 @@ def add_cors_headers(response):
 def upload_route():
     return upload_video()
 
-@app.route("/videos/<path:filename>")
-def serve_video_route(filename):
-    return serve_video(filename)
+@app.route("/videos/<int:user_id>/<hash_name>/<filename>")
+def serve_video_route(user_id, hash_name, filename):
+    return serve_video(user_id, hash_name, filename)
 
 @app.route("/get-analyses", methods=["GET"])
 def get_analyses_route():
