@@ -9,18 +9,17 @@ from datetime import datetime
 from flask import jsonify, request, send_from_directory, session
 from db_schema import db, Analysis
 from .analysis import analyse_video
+from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
 VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
 MODEL_FOLDER = os.path.join(os.path.dirname(__file__), "model")
 
-MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_v3.pkl"))
-MODEL_SHOT = joblib.load(os.path.join(MODEL_FOLDER, "model_shot_v3-hybrid.pkl"))
-OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "opt_cols_v2.pkl"))
-ORIG_COLS = joblib.load(os.path.join(MODEL_FOLDER, "orig_cols.pkl"))
-FORM_COLS = joblib.load(os.path.join(MODEL_FOLDER, "form_cols.pkl"))
-HYBRID_COLS = OPT_COLS + FORM_COLS + ORIG_COLS
+MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_v4_TEST_NEW.pkl"))
+OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "opt_cols_v3.pkl"))
+ALL_OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "all_opt_cols.pkl"))
+
 
 # ==================
 # ROUTES / ENDPOINTS
@@ -48,7 +47,6 @@ def upload_video():
   try:
     analysis_results = analyse_video(original_file_path, shooting_arm=shooting_arm)
     metrics = analysis_results.get("metrics", {})
-    print(metrics)
     processed_video_path = analysis_results.get("processed_video_path")
     setup_frame_path = analysis_results.get("setup_frame_path")
     release_frame_path = analysis_results.get("release_frame_path")
@@ -157,45 +155,74 @@ def get_model_feedback(features):
     # create df from raw pose data
     df_orig = pd.DataFrame([features])
 
-    opt_df = generate_opt_table(df_orig)
+    all_opt_df = generate_opt_table(df_orig)
+    model_opt_df = all_opt_df[OPT_COLS]
 
-    print(opt_df)
+    print(model_opt_df)
 
     print("\n Generating Form Score...")
-    form_probs = MODEL_FORM.predict_proba(opt_df)
+    form_probs = MODEL_FORM.predict_proba(model_opt_df)
     form_probs_df = pd.DataFrame(form_probs, columns=["form_0_prob", "form_1_prob", "form_2_prob"])
     print(f"Form Probabilities: {form_probs}")
 
     expected_form = (0 * form_probs_df["form_0_prob"] + 
-                      1 * form_probs_df["form_1_prob"] + 
-                      2 * form_probs_df["form_2_prob"]) / 2.0
-    print(f"Expected form: {expected_form}")
+                         1 * form_probs_df["form_1_prob"] + 
+                         2 * form_probs_df["form_2_prob"])
+    
+    final_form_score = (expected_form / 2.0) * 100 + 10 
+    final_form_score = np.clip(final_form_score, 10, 95)
 
-    print("\n Generating Form DF...")
-    df_with_form = pd.concat([df_orig.reset_index(drop=True), form_probs_df.reset_index(drop=True)], axis=1)
-    df_with_form["expected_form"] = expected_form.values
+    print(f"expected form (0-2 scale): {expected_form}")
+    print(f"final form score (%): {final_form_score.values}")
 
-    final_df = pd.concat([opt_df.reset_index(drop=True), df_with_form.reset_index(drop=True)], axis=1)
+    feedback_df = all_opt_df[FEEDBACK_COLS]
+    top_feedback = get_top_feedback(feedback_df, df_orig, 5)
+    print(top_feedback)
 
-    print("\n Generating Hybrid DF...")
-    # df_hybrid = final_df[HYBRID_COLS].copy()
-
-    print("\n Generating Shot Probability...")
-    # make_probability = MODEL_SHOT.predict(df_hybrid)[0] + 0.1
-    make_probability = 0.0
-    make_probability = np.clip(make_probability, 0.2, 0.9)
-
-    feedback = []
-    # for col in OPT_COLS:
-    #   val = opt_df.iloc[0][col]
-    #   feedback.append({"feature": col, "score": val})
-    # feedback = sorted(feedback, key=lambda x: x["score"])
-
-    return make_probability, feedback
+    return final_form_score.values[0], top_feedback
+  
   
   except Exception as e:
     print(f"Model inference error: {str(e)}")
     return None, None
+  
+def get_top_feedback(opt_df, df_orig, top_n=10):
+  scores = opt_df.iloc[0].to_dict()
+  non_optimal = {col: score for col, score in scores.items() if score != 100}
+
+  sorted_features = sorted(non_optimal.items(), key = lambda x: x[1])
+
+  top_features = sorted_features[:top_n]
+
+  feedback_list = []
+  for feature, score in top_features:
+    settings = OPT_SETTINGS.get(feature, {})
+    raw_val = None
+    direction = "optimal"
+
+    if settings.get("orig"):
+      raw_val = df_orig.iloc[0].get(settings["orig"])
+      if raw_val < settings["min"]:
+        direction = "low"
+      else:
+        direction = "high"
+    else:
+      direction = "special"
+
+    message = ""
+
+    if feature in FEEDBACK_MESSAGES:
+      message = FEEDBACK_MESSAGES[feature].get(direction, "")
+
+    feedback_list.append({
+      "feature": feature,
+      "score": score,
+      "direction": direction,
+      "message": message
+    })
+
+  return feedback_list
+
 
 def save_uploaded_file(file, upload_folder):
   if file.filename == "":
@@ -233,33 +260,58 @@ def score(val, opt_min, opt_max):
 
 def generate_opt_table(df):
   df = df.copy()
-  df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 130, 160))
+  # df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 140, 160))
+  # df['opt_S_avg_body_lean'] = df['S_avg_body_lean'].apply(lambda x: score(x, -2, 4))
+  # df['opt_S_avg_head_tilt'] = df['S_avg_head_tilt'].apply(lambda x: score(x, 50, 65))
+  # df['opt_S_avg_elbow_angle'] = df['S_avg_elbow_angle'].apply(lambda x: score(x, 45, 90))
+
+  # df['opt_R_avg_hip_angle'] = df['R_avg_hip_angle'].apply(lambda x: score(x, 160, 180))
+  # df['opt_R_avg_elbow_angle'] = df['R_avg_elbow_angle'].apply(lambda x: score(x, 110, 145))
+  # df['opt_R_avg_knee_bend'] = df['R_avg_knee_bend'].apply(lambda x: score(x, 155, 166))
+  # df['opt_R_max_wrist_height'] = df['R_max_wrist_height'].apply(lambda x: score(x, 3.4, 7))
+  # df['opt_R_avg_shoulder_angle'] = df['R_avg_shoulder_angle'].apply(lambda x: score(x, 30, 55))
+  # df['opt_R_avg_body_lean'] = df['R_avg_body_lean'].apply(lambda x: score(x, -3, 3))
+  # df['opt_R_forearm_deviation'] = df['R_avg_forearm_deviation'].apply(lambda x: score(x, -40, 10))
+  # df['opt_R_max_setpoint'] = df['R_max_setpoint'].apply(lambda x: score(x, -3, 10))
+  # df['opt_R_frame_count'] = df['R_frame_count'].apply(lambda x: score(x, 3, 12))
+
+  # df['opt_F_release'] = df['F_release_angle'].apply(lambda x: score(x, 55, 79))
+  # df['opt_F_elbow_above_eye'] = df['F_elbow_above_eye'].apply(lambda x: score(x, 7, 15))
+  # df['opt_F_hip_angle'] = df['F_hip_angle'].apply(lambda x: score(x, 174, 180))
+  # df['opt_F_knee_angle'] = df['F_knee_angle'].apply(lambda x: score(x, 170, 180))
+  # df['opt_F_body_lean'] = df['F_body_lean_angle'].apply(lambda x: score(x, -2, 2))
+  # df['opt_F_frame_count'] = df['F_frame_count'].apply(lambda x: score(x, 8, 50))
+  df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 120, 160))
   df['opt_S_avg_body_lean'] = df['S_avg_body_lean'].apply(lambda x: score(x, -2, 4))
   df['opt_S_avg_head_tilt'] = df['S_avg_head_tilt'].apply(lambda x: score(x, 50, 65))
+  df['opt_S_avg_elbow_angle'] = df['S_avg_elbow_angle'].apply(lambda x: score(x, 45, 90))
 
   df['opt_R_avg_hip_angle'] = df['R_avg_hip_angle'].apply(lambda x: score(x, 160, 180))
-  df['opt_R_avg_elbow_angle'] = df['R_avg_elbow_angle'].apply(lambda x: score(x, 110, 145))
-  df['opt_R_avg_knee_bend'] = df['R_avg_knee_bend'].apply(lambda x: score(x, 155, 175))
-  df['opt_R_max_wrist_height'] = df['R_max_wrist_height'].apply(lambda x: score(x, 3.5, 7))
-  df['opt_R_avg_shoulder_angle'] = df['R_avg_shoulder_angle'].apply(lambda x: score(x, 35, 55))
+  df['opt_R_avg_elbow_angle'] = df['R_avg_elbow_angle'].apply(lambda x: score(x, 95, 145))
+  df['opt_R_avg_knee_bend'] = df['R_avg_knee_bend'].apply(lambda x: score(x, 154, 166))
+  df['opt_R_max_wrist_height'] = df['R_max_wrist_height'].apply(lambda x: score(x, 3.4, 7))
+  df['opt_R_avg_shoulder_angle'] = df['R_avg_shoulder_angle'].apply(lambda x: score(x, 15, 55))
+  df['opt_R_avg_body_lean'] = df['R_avg_body_lean'].apply(lambda x: score(x, -3, 5))
+  df['opt_R_forearm_deviation'] = df['R_avg_forearm_deviation'].apply(lambda x: score(x, -40, 10))
+  df['opt_R_max_setpoint'] = df['R_max_setpoint'].apply(lambda x: score(x, -4, 10))
   df['opt_R_frame_count'] = df['R_frame_count'].apply(lambda x: score(x, 3, 12))
 
   df['opt_F_release'] = df['F_release_angle'].apply(lambda x: score(x, 55, 79))
-  df['opt_F_elbow_above_eye'] = df['F_elbow_above_eye'].apply(lambda x: score(x, 8, 15))
+  df['opt_F_elbow_above_eye'] = df['F_elbow_above_eye'].apply(lambda x: score(x, 7, 15))
   df['opt_F_hip_angle'] = df['F_hip_angle'].apply(lambda x: score(x, 174, 180))
   df['opt_F_knee_angle'] = df['F_knee_angle'].apply(lambda x: score(x, 170, 180))
-  df['opt_F_body_lean'] = df['F_body_lean_angle'].apply(lambda x: score(x, -2, 2))
+  df['opt_F_body_lean'] = df['F_body_lean_angle'].apply(lambda x: score(x, -2, 2.5))
   df['opt_F_frame_count'] = df['F_frame_count'].apply(lambda x: score(x, 8, 50))
 
   df['opt_A_knee_bend_order'] = df.apply(
-    lambda row: 100 if row['S_avg_knee_bend'] < row['R_avg_knee_bend'] else -100, axis=1
+      lambda row: 100 if row['S_avg_knee_bend'] < row['R_avg_knee_bend']+3 else -100, axis=1
   )
 
   df['opt_A_head_stability'] = df.apply(score_head_tilt, axis=1)
 
-  return df[OPT_COLS].copy()
+  return df[ALL_OPT_COLS].copy()
 
-def score_head_tilt(row, threshold=10):
+def score_head_tilt(row, threshold=15):
     head_tilts = [row['S_avg_head_tilt'], row['R_avg_head_tilt'], row['F_head_tilt']]
 
     std_dev = np.std(head_tilts)

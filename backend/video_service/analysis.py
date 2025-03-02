@@ -59,7 +59,7 @@ def analyse_video(input_video_path, shooting_arm):
 
   frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
   frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-  fourcc = cv2.VideoWriter_fourcc(*'X264')
+  fourcc = cv2.VideoWriter_fourcc(*'avc1')
   out = cv2.VideoWriter(processed_video_path, fourcc, target_fps, (frame_width, frame_height))
 
   # initialise pose
@@ -143,7 +143,9 @@ def analyse_video(input_video_path, shooting_arm):
         hip_angle = analyzer.calculate_angle(shoulder, hip, knee)
         knee_angle = analyzer.calculate_angle(hip, knee, ankle)
         head_tilt = analyzer.calculate_head_angle(eye, ear)
-
+        forearm_alignment = analyzer.calculate_forearm_alignment(elbow, wrist)
+        setpoint_distance = analyzer.calculate_release_setpoint(index_finger, eye)
+        
         angles = {
           'elbow': elbow_angle,
           'shoulder': shoulder_angle,
@@ -153,7 +155,9 @@ def analyse_video(input_video_path, shooting_arm):
           'body_lean': body_angle,
           'hip_angle': hip_angle,
           'dominant_knee': knee_angle,
-          'head_tilt': head_tilt
+          'head_tilt': head_tilt,
+          'forearm_alignment': forearm_alignment,
+          'setpoint': setpoint_distance
         }
         
         landmarks_dict = {
@@ -161,7 +165,8 @@ def analyse_video(input_video_path, shooting_arm):
           'eye': eye,
           'shoulder': shoulder,
           'hip': hip,
-          'elbow': elbow
+          'elbow': elbow,
+          'index_finger': index_finger
         }
 
         phase = analyzer.detect_phase(angles, landmarks_dict)

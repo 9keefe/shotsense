@@ -86,10 +86,25 @@ export default function Analysis() {
       )}
 
       <div className="max-w-xl bg-white p-4 rounded shadow mb-4 w-full">
-        <h2 className="text-xl font-semibold mb-2">Shot Success Probability</h2>
+        <h2 className="text-xl font-semibold mb-2">Overall Form Rating</h2>
         <p className="text-lg">
-          {(safeProbability * 100).toFixed(1)}% chance of making the shot
+          {(safeProbability / 10).toFixed(1)}/10
         </p>
+      </div>
+
+      <div className="max-w-xl bg-white p-4 rounded shadow w-full space-y-4">
+        <h2 className="text-xl font-semibold mb-2">Feedback</h2>
+        {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
+          <ul className="list-disc list-inside text-gray-800">
+            {analysisData.form_feedback.map((item, index) => (
+              <li key={index}>
+                {item.message}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No feedback messages available.</p>
+        )}
       </div>
 
       {/* Setup Analysis */}

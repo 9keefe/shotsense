@@ -20,6 +20,8 @@ class ShootingAnalyzer:
         "min_body_lean": float("inf"),
         "total_head_tilt": 0,
         "avg_head_tilt": float("inf"),
+        "total_elbow_angle": 0,
+        "avg_elbow_angle": float("inf"),
         "frame_count": 0,
         "stored": False
       },
@@ -37,6 +39,9 @@ class ShootingAnalyzer:
         "avg_head_tilt": float("inf"),
         "total_body_lean": 0,
         "avg_body_lean": float("inf"),
+        "total_forearm_deviation": 0,
+        "avg_forearm_deviation": float("inf"),
+        "max_setpoint": float("inf"),
         "frame_count": 0,
         "stored": False
       },
@@ -117,7 +122,19 @@ class ShootingAnalyzer:
       return angle_degrees
     else:
       return -angle_degrees
-  
+    
+  def calculate_forearm_alignment(self, elbow, wrist):
+    dx = wrist.x - elbow.x
+    dy = wrist.y - elbow.y
+    
+    angle_rad = np.arctan2(dx, -dy)
+    out = np.degrees(angle_rad)
+
+    if self.SHOOTING_ARM == "RIGHT":
+      return out
+    else:
+      return -out
+
   # calculates the angle of the wrist
   def calculate_wrist_angle(self, elbow, wrist, index_finger):
     wrist_point = np.array([wrist.x, wrist.y])
@@ -161,7 +178,19 @@ class ShootingAnalyzer:
 
     normalized = elbow_eye_diff / torso_length if torso_length != 0 else 0
 
-    return normalized * 100
+    return (elbow_eye_diff * 1000) / 2
+
+  def calculate_release_setpoint(self, index_finger, eye):
+    x_index_finger = index_finger.x
+    x_eye = eye.x
+
+    if self.SHOOTING_ARM == "RIGHT":
+      diff = x_index_finger - x_eye
+    else:
+      diff = x_eye - x_index_finger
+    
+    out = (diff*1000) / 2
+    return out
   
   # detect what phase the shooter is currently in
   def detect_phase(self, angles, landmarks):
@@ -175,8 +204,11 @@ class ShootingAnalyzer:
     body_lean = angles['body_lean']
     hip_angle = angles['hip_angle']
     head_tilt = angles['head_tilt']
+    forearm_deviation = angles['forearm_alignment']
 
+    # ==============
     # NULL phase
+    # ==============
     if self.current_phase == "Null":
       self.allow_follow_through = False
       if self.shot_completed is False:
@@ -191,56 +223,81 @@ class ShootingAnalyzer:
         if optimal or non_optimal:
           self.current_phase = "Setup"
           self.release_detected = False
+
+          # store first setup frame
+          setup_metrics = self.metrics["Setup"]
+          setup_metrics["max_knee_bend"] = min(setup_metrics["max_knee_bend"], knee_angle)
+          setup_metrics["min_body_lean"] = min(setup_metrics["min_body_lean"], body_lean)
+          setup_metrics["max_body_lean"] = max(setup_metrics["max_body_lean"], body_lean)
+          setup_metrics["total_knee_bend"] += knee_angle
+          setup_metrics["total_body_lean"] += body_lean
+          setup_metrics["total_head_tilt"] += head_tilt
+          setup_metrics["total_elbow_angle"] += elbow_angle
+
       self.previous_shoulder_angle = shoulder_angle
+    
+    # ==============
     # SETUP phase
+    # ==============
     elif self.current_phase == "Setup":
       # set metrics to setup
       setup_metrics = self.metrics["Setup"]
-      
-      setup_metrics["max_knee_bend"] = min(setup_metrics["max_knee_bend"], knee_angle)
-      setup_metrics["min_body_lean"] = min(setup_metrics["min_body_lean"], body_lean)
-      setup_metrics["max_body_lean"] = max(setup_metrics["max_body_lean"], body_lean)
-      setup_metrics["total_knee_bend"] += knee_angle
-      setup_metrics["total_body_lean"] += body_lean
-      setup_metrics["total_head_tilt"] += head_tilt
-      
       setup_metrics["frame_count"] += 1
 
       # change to release
-      if ((elbow_angle < 110 and shoulder_angle > 70 and elbow_angle > 70 and knee_angle > 150) or (knee_angle > 170 and elbow_angle > 65 and shoulder_angle > 45)
+      if ((elbow_angle < 110 and shoulder_angle > 70 and elbow_angle > 70 and knee_angle > 150) or (knee_angle > 170 and elbow_angle > 65 and shoulder_angle > 45 and forearm_deviation < 20)
        or (shoulder_angle > 85 and elbow_angle > 80 and elbow_angle < 140)):
         self.current_phase = "Release"
         self.release_detected = False
-
+        
         # setup finished, store setup metrics
         if not setup_metrics["stored"] and setup_metrics["frame_count"] > 0:
-          setup_metrics["avg_knee_bend"] = setup_metrics["total_knee_bend"] / setup_metrics["frame_count"]
-          setup_metrics["avg_body_lean"] = setup_metrics["total_body_lean"] / setup_metrics["frame_count"]
-          setup_metrics["avg_head_tilt"] = setup_metrics["total_head_tilt"] / setup_metrics["frame_count"]
+          num_frames = setup_metrics["frame_count"]
+          setup_metrics["avg_knee_bend"] = setup_metrics["total_knee_bend"] / num_frames
+          setup_metrics["avg_body_lean"] = setup_metrics["total_body_lean"] / num_frames
+          setup_metrics["avg_head_tilt"] = setup_metrics["total_head_tilt"] / num_frames
+          setup_metrics["avg_elbow_angle"] = setup_metrics["total_elbow_angle"] / num_frames
+
+          # store first release frame
+          release_metrics = self.metrics["Release"] 
+          release_metrics["total_hip_angle"] += hip_angle
+          release_metrics["total_knee_bend"] += knee_angle
+          release_metrics["total_elbow_angle"] += elbow_angle
+          release_metrics["total_shoulder_angle"] += shoulder_angle
+          release_metrics["total_head_tilt"] += head_tilt
+          release_metrics["total_body_lean"] += body_lean
+          release_metrics["total_forearm_deviation"] += forearm_deviation
+          release_metrics["max_wrist_height"] = max(
+            release_metrics["max_wrist_height"], 
+            self.calculate_wrist_height(landmarks["wrist"], landmarks["eye"], landmarks["shoulder"], landmarks["hip"])
+          )
+          release_metrics["max_setpoint"] = min(
+            release_metrics["max_setpoint"], 
+            self.calculate_release_setpoint(landmarks["index_finger"], landmarks["eye"])
+          )
+
         setup_metrics["stored"] = True
-    
+      else:
+        setup_metrics["max_knee_bend"] = min(setup_metrics["max_knee_bend"], knee_angle)
+        setup_metrics["min_body_lean"] = min(setup_metrics["min_body_lean"], body_lean)
+        setup_metrics["max_body_lean"] = max(setup_metrics["max_body_lean"], body_lean)
+        setup_metrics["total_knee_bend"] += knee_angle
+        setup_metrics["total_body_lean"] += body_lean
+        setup_metrics["total_head_tilt"] += head_tilt
+        setup_metrics["total_elbow_angle"] += elbow_angle
+      
+    # ==============
     # RELEASE phase
+    # ==============
     elif self.current_phase == "Release":
       # set metrics to release
       release_metrics = self.metrics["Release"] 
       follow_through_metrics = self.metrics["Follow-through"]
       
-      release_metrics["total_hip_angle"] += hip_angle
-      release_metrics["total_knee_bend"] += knee_angle
-      release_metrics["total_elbow_angle"] += elbow_angle
-      release_metrics["total_shoulder_angle"] += shoulder_angle
-      release_metrics["total_head_tilt"] += head_tilt
-      release_metrics["total_body_lean"] += body_lean
-      release_metrics["max_wrist_height"] = max(
-        release_metrics["max_wrist_height"], 
-        self.calculate_wrist_height(landmarks["wrist"], landmarks["eye"], landmarks["shoulder"], landmarks["hip"])
-      )
-
       release_metrics["frame_count"] += 1
-
-
+      
       # change to follow-through
-      if ((elbow_angle > 163 and shoulder_angle > 130 and self.allow_follow_through and wrist_angle > 160) or (wrist_angle > 174 and elbow_angle > 150 and shoulder_angle > 120 and knee_angle > 165 and self.allow_follow_through)
+      if ((elbow_angle > 163 and shoulder_angle > 130 and self.allow_follow_through and wrist_angle > 160) or (wrist_angle > 174 and elbow_angle > 148 and shoulder_angle > 120 and knee_angle > 165 and self.allow_follow_through)
         or (elbow_angle > 170 and shoulder_angle > 120 and self.allow_follow_through)):
         self.release_detected = True
         self.current_phase = "Follow-through"
@@ -248,12 +305,14 @@ class ShootingAnalyzer:
 
         # release finished, store release metrics
         if not release_metrics["stored"] and release_metrics["frame_count"] > 0:
-          release_metrics["avg_hip_angle"] = release_metrics["total_hip_angle"] / release_metrics["frame_count"]
-          release_metrics["avg_knee_bend"] = release_metrics["total_knee_bend"] / release_metrics["frame_count"]
-          release_metrics["avg_elbow_angle"] = release_metrics["total_elbow_angle"] / release_metrics["frame_count"]
-          release_metrics["avg_shoulder_angle"] = (release_metrics["total_shoulder_angle"] / release_metrics["frame_count"]) - 90
-          release_metrics["avg_head_tilt"] = release_metrics["total_head_tilt"] / release_metrics["frame_count"]
-          release_metrics["avg_body_lean"] = release_metrics["total_body_lean"] / release_metrics["frame_count"]
+          num_frames = release_metrics["frame_count"]
+          release_metrics["avg_hip_angle"] = release_metrics["total_hip_angle"] / num_frames
+          release_metrics["avg_knee_bend"] = release_metrics["total_knee_bend"] / num_frames
+          release_metrics["avg_elbow_angle"] = release_metrics["total_elbow_angle"] / num_frames
+          release_metrics["avg_shoulder_angle"] = (release_metrics["total_shoulder_angle"] / num_frames) - 90
+          release_metrics["avg_head_tilt"] = release_metrics["total_head_tilt"] / num_frames
+          release_metrics["avg_body_lean"] = release_metrics["total_body_lean"] / num_frames
+          release_metrics["avg_forearm_deviation"] = release_metrics["total_forearm_deviation"] / num_frames
         release_metrics["stored"] = True
 
         # store follow through metrics
@@ -268,10 +327,29 @@ class ShootingAnalyzer:
           follow_through_metrics["head_tilt"] = head_tilt
         follow_through_metrics["stored"] = True
       
+      else:
+        release_metrics["total_hip_angle"] += hip_angle
+        release_metrics["total_knee_bend"] += knee_angle
+        release_metrics["total_elbow_angle"] += elbow_angle
+        release_metrics["total_shoulder_angle"] += shoulder_angle
+        release_metrics["total_head_tilt"] += head_tilt
+        release_metrics["total_body_lean"] += body_lean
+        release_metrics["total_forearm_deviation"] += forearm_deviation
+        release_metrics["max_wrist_height"] = max(
+          release_metrics["max_wrist_height"], 
+          self.calculate_wrist_height(landmarks["wrist"], landmarks["eye"], landmarks["shoulder"], landmarks["hip"])
+        )
+        release_metrics["max_setpoint"] = min(
+          release_metrics["max_setpoint"], 
+          self.calculate_release_setpoint(landmarks["index_finger"], landmarks["eye"])
+        )
+
       if elbow_angle > 130:
         self.allow_follow_through = True
 
+    # ==============
     # FOLLOW-THROUGH phase
+    # ==============
     elif self.current_phase == "Follow-through":
       self.shot_completed = True
       self.follow_through_frame_count += 1
@@ -333,7 +411,8 @@ class ShootingAnalyzer:
           f"Avg Body Lean: {metrics_data['avg_body_lean']:.02f}",
           f"Max Body Lean: {metrics_data['max_body_lean']:.02f}",
           f"Min Body Lean: {metrics_data['min_body_lean']:.02f}",
-          f"Avg Head Tilt: {metrics_data['avg_head_tilt']:.02f}"
+          f"Avg Head Tilt: {metrics_data['avg_head_tilt']:.02f}",
+          f"Avg Elbow Angle: {metrics_data['avg_elbow_angle']:.02f}"
         ]
       elif phase == "Release" and metrics_data["stored"]:
         metrics_list = [
@@ -344,7 +423,9 @@ class ShootingAnalyzer:
           f"Max Wrist Height: {metrics_data['max_wrist_height']:.02f}",
           f"Avg Shoulder Angle: {metrics_data['avg_shoulder_angle']:.02f}",
           f"Avg Head Tilt: {metrics_data['avg_head_tilt']:.02f}",
-          f"Avg Body Lean: {metrics_data['avg_body_lean']:.02f}"
+          f"Avg Body Lean: {metrics_data['avg_body_lean']:.02f}",
+          f"Avg Forearm Deviation: {metrics_data['avg_forearm_deviation']:.02f}",
+          f"Max Setpoint Distance: {metrics_data['max_setpoint']:.02f}"
         ]
       elif phase == "Follow-through" and metrics_data["stored"]:
         metrics_list = [
@@ -362,17 +443,3 @@ class ShootingAnalyzer:
       for metric in metrics_list:
         cv2.putText(frame, metric, (x, y), font, 0.6, color, 2)
         y += 30
-    
-  
-
-      
-
-
-
-
-
-
-  
-
-
-

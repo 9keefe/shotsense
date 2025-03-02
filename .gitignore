@@ -4,3 +4,4 @@ backend/database.sqlite
 frontend/node_modules
 __pycache__
 .DS_Store
+/backend/video_service/model
