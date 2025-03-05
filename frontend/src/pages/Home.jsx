@@ -4,13 +4,14 @@ import axios from "axios";
 
 
 export default function Home() {
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const [name, setName] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get("http://127.0.0.1:5000/user", {
+        const response = await axios.get(`${BACKEND_BASE_URL}/user`, {
           withCredentials: true,
         });
         setName(response.data.name);

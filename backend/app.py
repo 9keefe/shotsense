@@ -18,7 +18,8 @@ app = Flask(
             static_folder='../frontend/build',
             static_url_path=''
 )
-CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5173"])
+
+CORS(app, supports_credentials=True, origins=["*"])
 app.secret_key = "u22058"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
@@ -41,7 +42,12 @@ if resetdb:
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:5173"
+    origin = request.headers.get("Origin")  # Get the actual request origin
+    allowed_origins = ["http://127.0.0.1:8000", "http://192.168.1.102:8000"]
+
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
@@ -77,4 +83,4 @@ def signin_route():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

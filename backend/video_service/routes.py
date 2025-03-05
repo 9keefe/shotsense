@@ -11,6 +11,9 @@ from db_schema import db, Analysis
 from .analysis import analyse_video
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
+
+BASE_URL = "http://192.168.1.102:5000"
+
 VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
@@ -58,7 +61,7 @@ def upload_video():
 
     if probability is None:
       raise ValueError("Model prediction failed")
-    base_url = f"http://127.0.0.1:5000/videos/{session['user_id']}/{unique_hash}/"
+    base_url = f"{BASE_URL}/videos/{session['user_id']}/{unique_hash}/"
 
     # create new db record
     new_analysis = Analysis(
@@ -260,27 +263,6 @@ def score(val, opt_min, opt_max):
 
 def generate_opt_table(df):
   df = df.copy()
-  # df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 140, 160))
-  # df['opt_S_avg_body_lean'] = df['S_avg_body_lean'].apply(lambda x: score(x, -2, 4))
-  # df['opt_S_avg_head_tilt'] = df['S_avg_head_tilt'].apply(lambda x: score(x, 50, 65))
-  # df['opt_S_avg_elbow_angle'] = df['S_avg_elbow_angle'].apply(lambda x: score(x, 45, 90))
-
-  # df['opt_R_avg_hip_angle'] = df['R_avg_hip_angle'].apply(lambda x: score(x, 160, 180))
-  # df['opt_R_avg_elbow_angle'] = df['R_avg_elbow_angle'].apply(lambda x: score(x, 110, 145))
-  # df['opt_R_avg_knee_bend'] = df['R_avg_knee_bend'].apply(lambda x: score(x, 155, 166))
-  # df['opt_R_max_wrist_height'] = df['R_max_wrist_height'].apply(lambda x: score(x, 3.4, 7))
-  # df['opt_R_avg_shoulder_angle'] = df['R_avg_shoulder_angle'].apply(lambda x: score(x, 30, 55))
-  # df['opt_R_avg_body_lean'] = df['R_avg_body_lean'].apply(lambda x: score(x, -3, 3))
-  # df['opt_R_forearm_deviation'] = df['R_avg_forearm_deviation'].apply(lambda x: score(x, -40, 10))
-  # df['opt_R_max_setpoint'] = df['R_max_setpoint'].apply(lambda x: score(x, -3, 10))
-  # df['opt_R_frame_count'] = df['R_frame_count'].apply(lambda x: score(x, 3, 12))
-
-  # df['opt_F_release'] = df['F_release_angle'].apply(lambda x: score(x, 55, 79))
-  # df['opt_F_elbow_above_eye'] = df['F_elbow_above_eye'].apply(lambda x: score(x, 7, 15))
-  # df['opt_F_hip_angle'] = df['F_hip_angle'].apply(lambda x: score(x, 174, 180))
-  # df['opt_F_knee_angle'] = df['F_knee_angle'].apply(lambda x: score(x, 170, 180))
-  # df['opt_F_body_lean'] = df['F_body_lean_angle'].apply(lambda x: score(x, -2, 2))
-  # df['opt_F_frame_count'] = df['F_frame_count'].apply(lambda x: score(x, 8, 50))
   df['opt_S_avg_knee_bend'] = df['S_avg_knee_bend'].apply(lambda x: score(x, 120, 160))
   df['opt_S_avg_body_lean'] = df['S_avg_body_lean'].apply(lambda x: score(x, -2, 4))
   df['opt_S_avg_head_tilt'] = df['S_avg_head_tilt'].apply(lambda x: score(x, 50, 65))

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function Signin() {
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
@@ -19,7 +20,7 @@ export default function Signin() {
     e.preventDefault();
 
     try { 
-      const response = await axios.post("http://127.0.0.1:5000/signin", formData, {
+      const response = await axios.post(`${BACKEND_BASE_URL}/signin`, formData, {
         withCredentials: true,
       });
       console.log("Response:", response.data);

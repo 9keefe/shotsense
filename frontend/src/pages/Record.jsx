@@ -3,6 +3,7 @@ import { PlusIcon } from "@heroicons/react/solid";
 import { useNavigate } from "react-router-dom";
 
 export default function Record() {
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [shootingArm, setShootingArm] = useState("RIGHT");
@@ -31,7 +32,7 @@ export default function Record() {
     formData.append("shootingArm", shootingArm);
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/upload", {
+      const res = await fetch(`${BACKEND_BASE_URL}/upload`, {
         method: "POST",
         body: formData,
         credentials: 'include' // Add this line

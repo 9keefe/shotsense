@@ -43,7 +43,7 @@ FEEDBACK_MESSAGES = {
     "low": "Try to keep your torso upright to maintain balance and fluidity. You're bending your hips too much, shifting your upper body forward and reducing shot arc, often leading to a flat or short shot.",
     "high": "Error"
   },
-  "opt_R_elbow_angle": {
+  "opt_R_avg_elbow_angle": {
     "low": "Error",
     "high": "Try to keep your elbow slightly bent when you bring the ball up, so you can be ready to snap and release it as you bring it up."
   },
@@ -109,7 +109,6 @@ FEEDBACK_COLS = [
   "opt_S_avg_elbow_angle",
   "opt_R_avg_shoulder_angle",
   "opt_R_max_wrist_height",
-  "opt_R_avg_knee_bend",
   "opt_R_avg_body_lean",
   "opt_R_max_setpoint",
   "opt_R_forearm_deviation",

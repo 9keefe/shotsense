@@ -3,6 +3,7 @@
  import axios from 'axios';
 
  export default function MyVideos() {
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,12 +13,12 @@
     const fetchData = async () => {
       try {
         // check if user is logged in
-        const userRes = await axios.get('http://127.0.0.1:5000/user', {
+        const userRes = await axios.get(`${BACKEND_BASE_URL}/user`, {
           withCredentials: true
         });
 
         // fetch analysis videos
-        const analysesRes = await axios.get('http://127.0.0.1:5000/get-analyses', {
+        const analysesRes = await axios.get(`${BACKEND_BASE_URL}/get-analyses`, {
           withCredentials: true
         });
 

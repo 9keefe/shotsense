@@ -3,6 +3,7 @@ import { useParams, useLocation } from "react-router-dom";
 import axios from "axios";
 
 export default function Analysis() {
+  const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const { id } = useParams();
   const location = useLocation();
   const [analysisData, setAnalysisData] = useState(null);
@@ -18,7 +19,7 @@ export default function Analysis() {
           setAnalysisData(initialData);
         } else {
           const response = await axios.get(
-            `http://127.0.0.1:5000/analyses/${id}`,
+            `${BACKEND_BASE_URL}/analyses/${id}`,
             { withCredentials: true }
           );
           setAnalysisData(response.data);
@@ -49,7 +50,6 @@ export default function Analysis() {
   }
 
   // Unified video URL handling
-  const originalVideoUrl = analysisData.original_video_url || analysisData.originalVideoUrl;
   const analysisVideoUrl = analysisData.video_url;
   const setupFrameUrl = analysisData.setup_frame_url;
   const releaseFrameUrl = analysisData.release_frame_url;
@@ -61,113 +61,112 @@ export default function Analysis() {
   const releaseMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("R_"));
   const followMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("F_"));
 
-  return (
-    <div className="min-h-screen flex flex-col items-center pt-8 px-4 space-y-8 pb-40">
-      <h1 className="text-2xl font-bold mb-4">Analysis</h1>
+  const renderMetrics = (metricPairs) => {
+    if (!metricPairs || metricPairs.length === 0) {
+      return <p className="text-gray-500">No metrics available</p>;
+    }
+    return (
+      <div>
+        {metricPairs.map(([key, value]) => (
+          <div
+            key={key}
+            className="rounded-md px-2 py-0.5 text-sm text-gray-700"
+          >
+            {key}:{" "}
+            {typeof value === "number" ? value.toFixed(1) : value}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
-      {/* Original Video
-      {originalVideoUrl && (
-        <div className="w-full max-w-xl mb-4">
-          <h2 className="text-xl font-semibold mb-2">Original Video</h2>
-          <video src={originalVideoUrl} controls className="w-full bg-black">
-            Your browser does not support video.
-          </video>
+return (
+    <div className="min-h-screen flex flex-col bg-orange-500 ">
+      {/* Top Header Section */}
+      <div className="p-6">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-5xl font-bold text-white py-5 mt-3">Analysis</h1>
+          {analysisVideoUrl && (
+            <div className="mb-6 -mt-2">
+              <video src={analysisVideoUrl} controls className="w-full bg-black rounded-xl shadow-lg">
+                Your browser does not support video.
+              </video>
+            </div>
+          )}
+          <p className="text-white mt-5 text-2xl">
+            <strong>Form Score:</strong> {(safeProbability / 10).toFixed(1)}/10
+          </p>
         </div>
-      )} */}
+      </div>
 
-      {/* Analysis (Processed) Video */}
-      {analysisVideoUrl && (
-        <div className="w-full max-w-xl mb-4">
-          <h2 className="text-xl font-semibold mb-2">Analysis Video</h2>
-          <video src={analysisVideoUrl} controls className="w-full bg-black">
-            Your browser does not support video.
-          </video>
+      {/* Main Content Container */}
+      <div className="mt-8 flex-1 rounded-t-3xl bg-white p-6 max-w-2xl mx-auto shadow-md pb-40">
+        {/* Optional: Analysis Video */}
+        
+
+        {/* Feedback */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-4 mt-2">Feedback</h2>
+          {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
+            <div className="space-y-3">
+              {analysisData.form_feedback.map((item, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-300 p-3 rounded-2xl text-gray-800"
+                >
+                  {item.message}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No feedback messages available.</p>
+          )}
         </div>
-      )}
 
-      <div className="max-w-xl bg-white p-4 rounded shadow mb-4 w-full">
-        <h2 className="text-xl font-semibold mb-2">Overall Form Rating</h2>
-        <p className="text-lg">
-          {(safeProbability / 10).toFixed(1)}/10
-        </p>
-      </div>
+        {/* Setup Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Setup Analysis</h2>
+          {setupFrameUrl ? (
+            <img
+              src={setupFrameUrl}
+              alt="Setup Phase Frame"
+              className="w-full rounded-md mb-4"
+            />
+          ) : (
+            <p className="text-gray-500 mb-4">No setup frame available</p>
+          )}
+          {renderMetrics(setupMetrics)}
+        </div>
 
-      <div className="max-w-xl bg-white p-4 rounded shadow w-full space-y-4">
-        <h2 className="text-xl font-semibold mb-2">Feedback</h2>
-        {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
-          <ul className="list-disc list-inside text-gray-800">
-            {analysisData.form_feedback.map((item, index) => (
-              <li key={index}>
-                {item.message}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No feedback messages available.</p>
-        )}
-      </div>
+        {/* Release Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Release Analysis</h2>
+          {releaseFrameUrl ? (
+            <img
+              src={releaseFrameUrl}
+              alt="Release Phase Frame"
+              className="w-full rounded-md mb-4"
+            />
+          ) : (
+            <p className="text-gray-500 mb-4">No release frame available</p>
+          )}
+          {renderMetrics(releaseMetrics)}
+        </div>
 
-      {/* Setup Analysis */}
-      <div className="max-w-xl bg-white p-4 rounded shadow w-full space-y-4">
-        <h2 className="text-xl font-semibold mb-2">Setup Analysis</h2>
-        {setupFrameUrl ? (
-          <img src={setupFrameUrl} alt="Setup Phase Frame" className="w-full" />
-        ) : (
-          <p>No setup frame available</p>
-        )}
-        {setupMetrics.length > 0 ? (
-          <ul className="list-disc list-inside text-gray-800">
-            {setupMetrics.map(([key, value]) => (
-              <li key={key}>
-                <strong>{key}:</strong> {typeof value === "number" ? value.toFixed(2) : value}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No setup metrics available</p>
-        )}
-      </div>
-
-      {/* Release Analysis */}
-      <div className="max-w-xl bg-white p-4 rounded shadow w-full space-y-4">
-        <h2 className="text-xl font-semibold mb-2">Release Analysis</h2>
-        {releaseFrameUrl ? (
-          <img src={releaseFrameUrl} alt="Release Phase Frame" className="w-full" />
-        ) : (
-          <p>No release frame available</p>
-        )}
-        {releaseMetrics.length > 0 ? (
-          <ul className="list-disc list-inside text-gray-800">
-            {releaseMetrics.map(([key, value]) => (
-              <li key={key}>
-                <strong>{key}:</strong> {typeof value === "number" ? value.toFixed(2) : value}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No release metrics available</p>
-        )}
-      </div>
-
-      {/* Follow-through Analysis */}
-      <div className="max-w-xl bg-white p-4 rounded shadow w-full space-y-4">
-        <h2 className="text-xl font-semibold mb-2">Follow-Through Analysis</h2>
-        {followFrameUrl ? (
-          <img src={followFrameUrl} alt="Follow-Through Phase Frame" className="w-full" />
-        ) : (
-          <p>No follow-through frame available</p>
-        )}
-        {followMetrics.length > 0 ? (
-          <ul className="list-disc list-inside text-gray-800">
-            {followMetrics.map(([key, value]) => (
-              <li key={key}>
-                <strong>{key}:</strong> {typeof value === "number" ? value.toFixed(2) : value}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No follow-through metrics available</p>
-        )}
+        {/* Follow-Through Section */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Follow-Through Analysis</h2>
+          {followFrameUrl ? (
+            <img
+              src={followFrameUrl}
+              alt="Follow-Through Phase Frame"
+              className="w-full rounded-md mb-4"
+            />
+          ) : (
+            <p className="text-gray-500 mb-4">No follow-through frame available</p>
+          )}
+          {renderMetrics(followMetrics)}
+        </div>
       </div>
     </div>
   );
