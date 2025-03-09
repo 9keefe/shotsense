@@ -12,15 +12,40 @@ from .analysis import analyse_video
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
 
-BASE_URL = "http://192.168.1.102:5000"
+BASE_URL = "http://172.25.8.106:5000"
 
 VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
 MODEL_FOLDER = os.path.join(os.path.dirname(__file__), "model")
 
-MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_v4_TEST_NEW.pkl"))
+MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_6_scale.pkl"))
+# MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_randomForest_6_scale.pkl"))
 OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "opt_cols_v3.pkl"))
+ORIG_COLS  = [
+  "S_avg_knee_bend",
+  "S_max_knee_bend",
+  "S_avg_body_lean",
+  "S_max_body_lean",
+  "S_min_body_lean",
+  "S_avg_head_tilt",
+  "S_frame_count",
+  "R_avg_hip_angle",
+  "R_avg_knee_bend",
+  "R_avg_elbow_angle",
+  "R_max_wrist_height",
+  "R_avg_shoulder_angle",
+  "R_avg_head_tilt",
+  "R_avg_body_lean",
+  "R_frame_count",
+  "F_release_angle",
+  "F_elbow_above_eye",
+  "F_body_lean_angle",
+  "F_hip_angle",
+  "F_knee_angle",
+  "F_head_tilt",
+  "F_frame_count"
+]
 ALL_OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "all_opt_cols.pkl"))
 
 
@@ -50,6 +75,7 @@ def upload_video():
   try:
     analysis_results = analyse_video(original_file_path, shooting_arm=shooting_arm)
     metrics = analysis_results.get("metrics", {})
+    parsed_metrics = parse_all_metrics(metrics)
     processed_video_path = analysis_results.get("processed_video_path")
     setup_frame_path = analysis_results.get("setup_frame_path")
     release_frame_path = analysis_results.get("release_frame_path")
@@ -67,7 +93,7 @@ def upload_video():
     new_analysis = Analysis(
       user_id = session["user_id"],
       hashed_filename = unique_hash,
-      metrics_json = json.dumps(metrics),
+      metrics_json = json.dumps(parsed_metrics),
       make_probability = make_probability,
       form_feedback_json = form_feedback,
       video_url = base_url + f"VIDEO_{unique_hash}.mp4",
@@ -83,7 +109,7 @@ def upload_video():
     return jsonify({
       "message": "Analysis complete",
       "analysis_id": new_analysis.id,
-      "metrics": metrics,
+      "metrics": parsed_metrics,
       "make_probability": make_probability,
       "form_feedback": form_feedback,
       "originalVideoUrl": base_url + f"ORIGINAL_{unique_hash}.mp4",
@@ -161,28 +187,32 @@ def get_model_feedback(features):
     all_opt_df = generate_opt_table(df_orig)
     model_opt_df = all_opt_df[OPT_COLS]
 
-    print(model_opt_df)
+    # training_df = pd.concat([model_opt_df, df_orig], axis=1)
+    training_df = model_opt_df
 
-    print("\n Generating Form Score...")
-    form_probs = MODEL_FORM.predict_proba(model_opt_df)
-    form_probs_df = pd.DataFrame(form_probs, columns=["form_0_prob", "form_1_prob", "form_2_prob"])
+    form_probs = MODEL_FORM.predict_proba(training_df)
+    form_probs_df = pd.DataFrame(form_probs, columns=["form_0_prob", "form_1_prob", "form_2_prob", "form_3_prob", "form_4_prob", "form_5_prob"])
     print(f"Form Probabilities: {form_probs}")
 
     expected_form = (0 * form_probs_df["form_0_prob"] + 
                          1 * form_probs_df["form_1_prob"] + 
-                         2 * form_probs_df["form_2_prob"])
+                         2 * form_probs_df["form_2_prob"] +
+                         3 * form_probs_df["form_3_prob"] +
+                         4 * form_probs_df["form_4_prob"] +
+                         5 * form_probs_df["form_5_prob"])
     
-    final_form_score = (expected_form / 2.0) * 100 + 10 
+    final_form_score = (expected_form / 6.0) * 100
     final_form_score = np.clip(final_form_score, 10, 95)
 
-    print(f"expected form (0-2 scale): {expected_form}")
     print(f"final form score (%): {final_form_score.values}")
+
+    final_score = calculate_percentage(form_probs, 5)
+    print(final_score)
 
     feedback_df = all_opt_df[FEEDBACK_COLS]
     top_feedback = get_top_feedback(feedback_df, df_orig, 5)
-    print(top_feedback)
 
-    return final_form_score.values[0], top_feedback
+    return final_score, top_feedback
   
   
   except Exception as e:
@@ -211,17 +241,42 @@ def get_top_feedback(opt_df, df_orig, top_n=10):
         direction = "high"
     else:
       direction = "special"
+    
+    optimal_range_str = ""
+    if settings.get("min") is not None and settings.get("max") is not None:
+      optimal_range_str = f"\nOptimal range: Between {round(settings['min'], 1)} and {round(settings['max'], 1)}"
 
-    message = ""
+    short_msg = ""
+    detailed_msg = ""
 
     if feature in FEEDBACK_MESSAGES:
-      message = FEEDBACK_MESSAGES[feature].get(direction, "")
+      feedback_for_feature = FEEDBACK_MESSAGES[feature]
+      if direction in feedback_for_feature:
+        feedback_item = feedback_for_feature[direction]
+        print(feedback_item)
+        if isinstance(feedback_item, dict):
+          short_msg = feedback_item.get("short", "")
+          detailed_msg = feedback_item.get("detailed", "")
+        else:
+          short_msg = feedback_item
+          detailed_msg = feedback_item
+      else:
+        short_msg = "ERROR"
+        detailed_msg = "ERROR"
+    else:
+      short_msg = "ERROR"
+      detailed_msg = "ERROR"
+    
+    if raw_val is not None:
+      feature_name = parse_metric(settings.get("orig", feature))[2:]
+      detailed_msg += f"\n\n{feature_name}\nCurrent value: {round(raw_val, 1)} {optimal_range_str}"
 
     feedback_list.append({
       "feature": feature,
       "score": score,
       "direction": direction,
-      "message": message
+      "short": short_msg,
+      "detailed": detailed_msg
     })
 
   return feedback_list
@@ -305,6 +360,29 @@ def create_video_folder(user_id, hash_name):
   os.makedirs(folder_path, exist_ok=True)
   return folder_path
 
+def calculate_percentage(probabilities, max_class):
+  label_scores = np.array([i / max_class * 100 for i in range(max_class + 1)])
+  final_score = np.sum(probabilities * label_scores)
+  return final_score + 10
 
+def parse_metric(metric):
+    # remove the prefix if it exists
+    # if metric.startswith("S_") or metric.startswith("R_") or metric.startswith("F_"):
+    #     metric = metric[2:]
+    
+    parts = metric.split("_")
+    new_parts = []
+    for part in parts:
+        if part.lower() == "avg":
+            new_parts.append("Average")
+        else:
+            new_parts.append(part.capitalize())
+    
+    return " ".join(new_parts)
 
-
+def parse_all_metrics(metrics_dict):
+    parsed = {}
+    for key, value in metrics_dict.items():
+        parsed_key = parse_metric(key)
+        parsed[parsed_key] = value
+    return parsed

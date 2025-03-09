@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import axios from "axios";
+import FeedbackItem from "../components/FeedbackItem";
 
 export default function Analysis() {
   const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
@@ -57,9 +58,9 @@ export default function Analysis() {
   const safeProbability = analysisData.make_probability || 0;
 
   const metrics = analysisData.metrics || {};
-  const setupMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("S_"));
-  const releaseMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("R_"));
-  const followMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("F_"));
+  const setupMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("S "));
+  const releaseMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("R "));
+  const followMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("F "));
 
   const renderMetrics = (metricPairs) => {
     if (!metricPairs || metricPairs.length === 0) {
@@ -72,7 +73,7 @@ export default function Analysis() {
             key={key}
             className="rounded-md px-2 py-0.5 text-sm text-gray-700"
           >
-            {key}:{" "}
+            {key.substring(2)}:{" "}
             {typeof value === "number" ? value.toFixed(1) : value}
           </div>
         ))}
@@ -110,12 +111,7 @@ return (
           {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
             <div className="space-y-3">
               {analysisData.form_feedback.map((item, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-300 p-3 rounded-2xl text-gray-800"
-                >
-                  {item.message}
-                </div>
+                <FeedbackItem key={index} feedback={item} />
               ))}
             </div>
           ) : (

@@ -2,7 +2,7 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { HomeIcon, VideoCameraIcon, UserIcon } from "@heroicons/react/solid"
+import { HomeIcon, VideoCameraIcon, BookmarkIcon } from "@heroicons/react/solid"
 
 export default function NavBar() {
   const location = useLocation();
@@ -54,8 +54,8 @@ export default function NavBar() {
       <CircleButton path="/record">
         <VideoCameraIcon className="w-14 h-14"/>
       </CircleButton>
-      <CircleButton path="/profile">
-        <UserIcon className="w-14 h-14"/>
+      <CircleButton path="/my-videos">
+        <BookmarkIcon className="w-14 h-14"/>
       </CircleButton>
     </div>
   );
