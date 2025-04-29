@@ -43,7 +43,7 @@ if resetdb:
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get("Origin")  # Get the actual request origin
-    allowed_origins = ["http://127.0.0.1:8000", "http://192.168.1.102:8000", "http://172.25.8.106:8000"]
+    allowed_origins = ["http://127.0.0.1:8000", "http://192.168.1.235:8000", "http://172.25.8.106:8000", "http://172.25.12.159:8000"]
 
     if origin in allowed_origins:
         response.headers["Access-Control-Allow-Origin"] = origin
@@ -83,4 +83,4 @@ def signin_route():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8080, debug=True)

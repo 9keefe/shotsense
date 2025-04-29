@@ -40,7 +40,6 @@ export default function Home() {
       </div>
 
       <div className="flex-1 bg-white rounded-t-3xl drop-shadow pt-4">
-      {/* Two Cards: Quick Fixes & Quick Tips */}
         <div className="flex space-x-4 px-4 mb-4 mt-10 mx-2">
           <div className="flex-1 bg-orange-500 rounded-3xl p-8 flex flex-col hover:bg-orange-600 shadow-md">
             <h3 className="text-white font-semibold mb-10">QUICK FIXES</h3>

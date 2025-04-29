@@ -12,7 +12,7 @@ from .analysis import analyse_video
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
 
-BASE_URL = "http://172.25.8.106:5000"
+BASE_URL = "http://172.25.12.159:8080"
 
 VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
@@ -20,7 +20,6 @@ os.makedirs(VIDEO_FOLDER, exist_ok=True)
 MODEL_FOLDER = os.path.join(os.path.dirname(__file__), "model")
 
 MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_form_6_scale.pkl"))
-# MODEL_FORM = joblib.load(os.path.join(MODEL_FOLDER, "model_randomForest_6_scale.pkl"))
 OPT_COLS = joblib.load(os.path.join(MODEL_FOLDER, "opt_cols_v3.pkl"))
 ORIG_COLS  = [
   "S_avg_knee_bend",
@@ -366,10 +365,6 @@ def calculate_percentage(probabilities, max_class):
   return final_score + 10
 
 def parse_metric(metric):
-    # remove the prefix if it exists
-    # if metric.startswith("S_") or metric.startswith("R_") or metric.startswith("F_"):
-    #     metric = metric[2:]
-    
     parts = metric.split("_")
     new_parts = []
     for part in parts:
