@@ -269,7 +269,7 @@ class ShootingAnalyzer:
             follow_through_metrics["head_tilt"] = head_tilt
         follow_through_metrics["stored"] = True
 
-    def _handle_null_phase(self, shoulder_angle, elbow_angle, knee_angle, head_tilt, body_lean):
+    def _handle_null_phase(self, shoulder_angle, elbow_angle, knee_angle, head_tilt, body_lean, forearm_deviation):
         self.allow_follow_through = False
 
         if self.shot_completed is False:
@@ -279,15 +279,21 @@ class ShootingAnalyzer:
                 and knee_angle < 170
                 and shoulder_angle > 3
                 and head_tilt > 10
+                and head_tilt < 100
+                and forearm_deviation < 100
+                and forearm_deviation > 0
             )
 
             non_optimal = False
             if self.previous_shoulder_angle is not None:
                 non_optimal = (
                     head_tilt > 10
+                    and head_tilt < 100
                     and shoulder_angle > 5
                     and shoulder_angle < 60
                     and elbow_angle < 150
+                    and forearm_deviation < 100
+                    and forearm_deviation > 0
                     and (shoulder_angle - 3 > self.previous_shoulder_angle)
                 )
 
@@ -403,7 +409,7 @@ class ShootingAnalyzer:
         forearm_deviation = angles["forearm_alignment"]
 
         if self.current_phase == self.PHASE_NULL:
-            self._handle_null_phase(shoulder_angle, elbow_angle, knee_angle, head_tilt, body_lean)
+            self._handle_null_phase(shoulder_angle, elbow_angle, knee_angle, head_tilt, body_lean, forearm_deviation)
         elif self.current_phase == self.PHASE_SETUP:
             self._handle_setup_phase(elbow_angle, shoulder_angle, knee_angle, forearm_deviation, hip_angle, head_tilt, body_lean, landmarks)
         elif self.current_phase == self.PHASE_RELEASE:
