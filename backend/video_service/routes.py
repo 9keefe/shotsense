@@ -7,8 +7,9 @@ import json
 import shap
 from datetime import datetime
 from flask import jsonify, request, send_from_directory, session
-from db_schema import db, Analysis
+from db_schema import db, Analysis, Session as VideoSession, ShotAnalysis
 from .analysis import analyse_video
+from .session_analysis import VIDEO_FOLDER as SESSION_VIDEO_FOLDER, process_session_upload
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
 
@@ -121,6 +122,36 @@ def upload_video():
     return jsonify({"error": str(e)}), 500
 
 
+def upload_session_video():
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorized"}), 401
+
+  if "video" not in request.files:
+    return jsonify({"error": "No video file found"}), 400
+
+  file = request.files["video"]
+  if file.filename == "":
+    return jsonify({"error": "Empty filename"}), 400
+
+  shooting_arm = request.form.get("shootingArm", "RIGHT")
+
+  try:
+    session_record = process_session_upload(
+      file=file,
+      user_id=session["user_id"],
+      shooting_arm=shooting_arm,
+    )
+
+    return jsonify({
+      "message": "Session analysis complete",
+      "session_id": session_record.id,
+      "status": session_record.status,
+      "shot_count": session_record.shot_count,
+    }), 200
+  except Exception as e:
+    return jsonify({"error": str(e)}), 500
+
+
 def get_analyses():
   if "user_id" not in session:
     return jsonify({"error": "Unauthorised"}), 401
@@ -171,9 +202,113 @@ def get_analysis(analysis_id):
     "created_at": analysis.created_at.isoformat()
   }), 200
 
+
+def get_sessions():
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorised"}), 401
+
+  user_sessions = VideoSession.query.filter_by(
+    user_id=session["user_id"]
+  ).order_by(VideoSession.created_at.desc()).all()
+
+  sessions_data = []
+  for session_record in user_sessions:
+    first_shot = session_record.shots[0] if session_record.shots else None
+    sessions_data.append({
+      "id": session_record.id,
+      "created_at": session_record.created_at.isoformat(),
+      "status": session_record.status,
+      "shot_count": session_record.shot_count,
+      "original_video_url": session_record.original_video_url,
+      "preview_shot_id": first_shot.id if first_shot else None,
+      "preview_video_url": first_shot.video_url if first_shot else None,
+    })
+
+  return jsonify(sessions_data), 200
+
+
+def get_session(session_id):
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorised"}), 401
+
+  session_record = VideoSession.query.filter_by(
+    id=session_id,
+    user_id=session["user_id"]
+  ).first()
+
+  if not session_record:
+    return jsonify({"error": "Session not found"}), 404
+
+  return jsonify({
+    "id": session_record.id,
+    "created_at": session_record.created_at.isoformat(),
+    "status": session_record.status,
+    "shooting_arm": session_record.shooting_arm,
+    "shot_count": session_record.shot_count,
+    "original_video_url": session_record.original_video_url,
+    "processing_error": session_record.processing_error,
+    "shots": [serialize_shot_summary(shot) for shot in session_record.shots],
+  }), 200
+
+
+def get_shot(shot_id):
+  if "user_id" not in session:
+    return jsonify({"error": "Unauthorised"}), 401
+
+  shot = ShotAnalysis.query.join(VideoSession).filter(
+    ShotAnalysis.id == shot_id,
+    VideoSession.user_id == session["user_id"],
+  ).first()
+
+  if not shot:
+    return jsonify({"error": "Shot analysis not found"}), 404
+
+  return jsonify({
+    "id": shot.id,
+    "session_id": shot.session_id,
+    "shot_index": shot.shot_index,
+    "start_frame": shot.start_frame,
+    "end_frame": shot.end_frame,
+    "video_url": shot.video_url,
+    "original_video_url": shot.original_video_url,
+    "setup_frame_url": shot.setup_frame_url,
+    "release_frame_url": shot.release_frame_url,
+    "follow_frame_url": shot.follow_frame_url,
+    "metrics": json.loads(shot.metrics_json),
+    "make_probability": shot.make_probability,
+    "form_feedback": json.loads(shot.form_feedback_json),
+    "created_at": shot.created_at.isoformat()
+  }), 200
+
 def serve_video(user_id, hash_name, filename):
   directory = os.path.join(VIDEO_FOLDER, str(user_id), hash_name)
   return send_from_directory(directory, filename)
+
+
+def serve_session_video(user_id, session_hash, filename):
+  directory = os.path.join(SESSION_VIDEO_FOLDER, str(user_id), "sessions", session_hash)
+  return send_from_directory(directory, filename)
+
+
+def serve_shot_video(user_id, session_hash, shot_folder, filename):
+  directory = os.path.join(SESSION_VIDEO_FOLDER, str(user_id), "sessions", session_hash, "shots", shot_folder)
+  return send_from_directory(directory, filename)
+
+
+def serialize_shot_summary(shot):
+  return {
+    "id": shot.id,
+    "shot_index": shot.shot_index,
+    "start_frame": shot.start_frame,
+    "end_frame": shot.end_frame,
+    "video_url": shot.video_url,
+    "original_video_url": shot.original_video_url,
+    "setup_frame_url": shot.setup_frame_url,
+    "release_frame_url": shot.release_frame_url,
+    "follow_frame_url": shot.follow_frame_url,
+    "make_probability": shot.make_probability,
+    "created_at": shot.created_at.isoformat(),
+  }
 
 
 # ==================

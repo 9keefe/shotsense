@@ -1,7 +1,18 @@
 from flask import Flask, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 
-from video_service.routes import upload_video, serve_video, get_analyses, get_analysis
+from video_service.routes import (
+    get_analyses,
+    get_analysis,
+    get_session,
+    get_sessions,
+    get_shot,
+    serve_session_video,
+    serve_shot_video,
+    serve_video,
+    upload_session_video,
+    upload_video,
+)
 from auth_service.routes import signup, signin, user
 
 from db_schema import db, dbinit, User, Analysis
@@ -55,11 +66,23 @@ def add_cors_headers(response):
 
 @app.route("/upload", methods=["POST"])
 def upload_route():
+    return upload_session_video()
+
+@app.route("/upload-single", methods=["POST"])
+def upload_single_route():
     return upload_video()
 
 @app.route("/videos/<int:user_id>/<hash_name>/<filename>")
 def serve_video_route(user_id, hash_name, filename):
     return serve_video(user_id, hash_name, filename)
+
+@app.route("/videos/<int:user_id>/sessions/<session_hash>/<filename>")
+def serve_session_video_route(user_id, session_hash, filename):
+    return serve_session_video(user_id, session_hash, filename)
+
+@app.route("/videos/<int:user_id>/sessions/<session_hash>/shots/<shot_folder>/<filename>")
+def serve_shot_video_route(user_id, session_hash, shot_folder, filename):
+    return serve_shot_video(user_id, session_hash, shot_folder, filename)
 
 @app.route("/get-analyses", methods=["GET"])
 def get_analyses_route():
@@ -68,6 +91,18 @@ def get_analyses_route():
 @app.route("/analyses/<int:analysis_id>", methods=["GET"])
 def get_analysis_route(analysis_id):
     return get_analysis(analysis_id)
+
+@app.route("/sessions", methods=["GET"])
+def get_sessions_route():
+    return get_sessions()
+
+@app.route("/sessions/<int:session_id>", methods=["GET"])
+def get_session_route(session_id):
+    return get_session(session_id)
+
+@app.route("/shots/<int:shot_id>", methods=["GET"])
+def get_shot_route(shot_id):
+    return get_shot(shot_id)
 
 @app.route("/user", methods=["GET"])
 def user_route():
