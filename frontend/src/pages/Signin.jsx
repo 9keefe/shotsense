@@ -5,13 +5,14 @@ import axios from "axios";
 export default function Signin() {
   const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
   const [error, setError] = useState("");
 
-  // handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -19,103 +20,106 @@ export default function Signin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try { 
-      const response = await axios.post(`${BACKEND_BASE_URL}/signin`, formData, {
+    try {
+      await axios.post(`${BACKEND_BASE_URL}/signin`, formData, {
         withCredentials: true,
       });
-      console.log("Response:", response.data);
-      navigate("/home")
+      navigate("/home");
     } catch (err) {
       console.error("Error response", err.response);
-      setError(err.response?.data?.error || "Something went wrong. Please try again.");
+      setError(
+        err.response?.data?.error || "Something went wrong. Please try again."
+      );
     }
-  }
+  };
 
   return (
-    <div className="bg-orange-500 min-h-screen flex flex-col items-center">
+    <div className="min-h-screen bg-[#0A0A0B] text-white relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.10),transparent_24%)]" />
 
-      <div className="w-full max-w-md px-8 py-8">
-        <h1 className="text-3xl font-bold text-white leading-none">Hello.</h1>
-        <p className="text-3xl text-white">Welcome to ShotSense!</p>
-        <p className="text-3xl text-white mt-5">Sign in.</p>
-      </div>
-
-      <form
-        className="flex-1 w-full max-w-lg bg-white rounded-t-3xl shadow-lg p-8 pt-16"
-        onSubmit={handleSubmit}
-      >
-        <div className="space-y-4">
-
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-semibold text-gray-600"
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              placeholder="name@example.com"
-              className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+      <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-6 py-12 lg:px-10">
+        <div className="grid w-full grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col justify-center">
+            <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+              ShotSense
+            </p>
+            <h1 className="mt-4 text-5xl font-semibold tracking-tight md:text-6xl">
+              Welcome back.
+            </h1>
+            <p className="mt-6 max-w-xl text-base leading-8 text-zinc-400">
+              Sign in to access your training workspace, review previous sessions,
+              and continue refining your shot mechanics.
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-semibold text-gray-600"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              placeholder="password"
-              className="w-full border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-orange-500 text-gray-800 py-2"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
+          >
+            <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+              Sign in
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold">Welcome back.</h2>
 
-          <div className="text-right">
-            <Link
-              to="/forgot-password"
-              className="text-sm text-orange-500 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
+            <div className="mt-8 space-y-5">
+              <div>
+                <label className="mb-2 block text-sm text-zinc-400">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="name@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-400/40"
+                />
+              </div>
 
-          {/* Display error message */}
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+              <div>
+                <label className="mb-2 block text-sm text-zinc-400">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-400/40"
+                />
+              </div>
 
-          <div className="py-8">
-            <button
-              type="submit"
-              className="w-full py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 shadow-md"
-            >
-              SIGN IN
-            </button>
-          </div>
+              <div className="text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-zinc-400 transition hover:text-white"
+                >
+                  Forgot password?
+                </Link>
+              </div>
 
-          <div className="text-right">
-            <p className="text-sm text-gray-400">Don't have an account?</p>
-            <Link
-              to="/signup"
-              className="text-md font-semibold text-gray-600 hover:underline"
-            >
-              Sign up
-            </Link>
-          </div>
+              {error && (
+                <div className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full rounded-full bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+              >
+                Sign in
+              </button>
+
+              <div className="pt-2 text-sm text-zinc-400">
+                No account yet?{" "}
+                <Link to="/signup" className="text-white hover:underline">
+                  Create one.
+                </Link>
+              </div>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

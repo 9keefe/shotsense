@@ -13,9 +13,8 @@ export default function Analysis() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Check both possible data sources
         const initialData = location.state?.analysisData;
-        
+
         if (initialData) {
           setAnalysisData(initialData);
         } else {
@@ -32,25 +31,28 @@ export default function Analysis() {
       }
     };
     fetchData();
-  }, [id, location.state]);
+  }, [id, location.state, BACKEND_BASE_URL]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700">Loading analysis...</p>
+      <div className="min-h-screen bg-[#0A0A0B] text-white flex items-center justify-center">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-zinc-300 backdrop-blur-xl">
+          Loading analysis...
+        </div>
       </div>
     );
   }
 
   if (!analysisData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700">Analysis not found</p>
+      <div className="min-h-screen bg-[#0A0A0B] text-white flex items-center justify-center">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-zinc-300 backdrop-blur-xl">
+          Analysis not found
+        </div>
       </div>
     );
   }
 
-  // Unified video URL handling
   const analysisVideoUrl = analysisData.video_url;
   const setupFrameUrl = analysisData.setup_frame_url;
   const releaseFrameUrl = analysisData.release_frame_url;
@@ -62,106 +64,150 @@ export default function Analysis() {
   const releaseMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("R "));
   const followMetrics = Object.entries(metrics).filter(([key]) => key.startsWith("F "));
 
+  const formScore = (safeProbability / 10).toFixed(1);
+
   const renderMetrics = (metricPairs) => {
     if (!metricPairs || metricPairs.length === 0) {
-      return <p className="text-gray-500">No metrics available</p>;
+      return <p className="text-sm text-zinc-500">No metrics available</p>;
     }
+
     return (
-      <div>
+      <div className="grid grid-cols-1 gap-3">
         {metricPairs.map(([key, value]) => (
           <div
             key={key}
-            className="rounded-md px-2 py-0.5 text-sm text-gray-700"
+            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
           >
-            {key.substring(2)}:{" "}
-            {typeof value === "number" ? value.toFixed(1) : value}
+            <span className="text-sm text-zinc-400 tracking-wide">
+              {key.substring(2)}
+            </span>
+            <span className="font-mono text-sm text-white">
+              {typeof value === "number" ? value.toFixed(1) : value}
+            </span>
           </div>
         ))}
       </div>
     );
   };
 
-return (
-    <div className="min-h-screen flex flex-col bg-orange-500 ">
-      {/* Top Header Section */}
-      <div className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-5xl font-bold text-white py-5 mt-3">Analysis</h1>
-          {analysisVideoUrl && (
-            <div className="mb-6 -mt-2">
-              <video src={analysisVideoUrl} controls className="w-full bg-black rounded-xl shadow-lg">
-                Your browser does not support video.
-              </video>
-            </div>
-          )}
-          <p className="text-white mt-5 text-2xl">
-            <strong>Form Score:</strong> {(safeProbability / 10).toFixed(1)}/10
-          </p>
-        </div>
+  const PhaseCard = ({ title, image, metricPairs }) => (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs text-blue-300">
+          Phase
+        </span>
       </div>
 
-      {/* Main Content Container */}
-      <div className="mt-8 flex-1 rounded-t-3xl bg-white p-6 max-w-2xl mx-auto shadow-md pb-40">
-        {/* Optional: Analysis Video */}
-        
+      {image ? (
+        <img
+          src={image}
+          alt={`${title} frame`}
+          className="mb-4 h-56 w-full rounded-2xl object-cover border border-white/10"
+        />
+      ) : (
+        <div className="mb-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] text-zinc-500">
+          No frame available
+        </div>
+      )}
 
-        {/* Feedback */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4 mt-2">Feedback</h2>
-          {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
-            <div className="space-y-3">
-              {analysisData.form_feedback.map((item, index) => (
-                <FeedbackItem key={index} feedback={item} />
-              ))}
+      {renderMetrics(metricPairs)}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0B] text-white relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.12),transparent_24%)]" />
+
+      <div className="relative mx-auto max-w-7xl px-6 py-10 lg:px-10">
+        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 text-sm uppercase tracking-[0.24em] text-zinc-500">
+              ShotSense
+            </p>
+            <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+              Shot Analysis
+            </h1>
+            <p className="mt-3 max-w-2xl text-zinc-400">
+              Review biomechanics, identify inconsistencies, and refine shooting form with phase-level feedback.
+            </p>
+          </div>
+
+          <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+            <p className="text-sm text-zinc-400">Overall Form Score</p>
+            <div className="mt-3 flex items-end gap-3">
+              <span className="text-6xl font-semibold tracking-tight">{formScore}</span>
+              <span className="mb-2 text-lg text-zinc-400">/ 10</span>
             </div>
-          ) : (
-            <p className="text-gray-500">No feedback messages available.</p>
-          )}
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
+                style={{ width: `${Math.min(Number(formScore) * 10, 100)}%` }}
+              />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
+                Biomechanics
+              </span>
+              <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs text-blue-300">
+                AI Feedback
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Setup Section */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Setup Analysis</h2>
-          {setupFrameUrl ? (
-            <img
-              src={setupFrameUrl}
-              alt="Setup Phase Frame"
-              className="w-full rounded-md mb-4"
-            />
-          ) : (
-            <p className="text-gray-500 mb-4">No setup frame available</p>
-          )}
-          {renderMetrics(setupMetrics)}
-        </div>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Shot Replay</h2>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-400">
+                  Session Video
+                </span>
+              </div>
 
-        {/* Release Section */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Release Analysis</h2>
-          {releaseFrameUrl ? (
-            <img
-              src={releaseFrameUrl}
-              alt="Release Phase Frame"
-              className="w-full rounded-md mb-4"
-            />
-          ) : (
-            <p className="text-gray-500 mb-4">No release frame available</p>
-          )}
-          {renderMetrics(releaseMetrics)}
-        </div>
+              {analysisVideoUrl ? (
+                <video
+                  src={analysisVideoUrl}
+                  controls
+                  className="w-full rounded-2xl border border-white/10 bg-black"
+                >
+                  Your browser does not support video.
+                </video>
+              ) : (
+                <div className="flex h-80 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/30 text-zinc-500">
+                  No video available
+                </div>
+              )}
+            </div>
 
-        {/* Follow-Through Section */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Follow-Through Analysis</h2>
-          {followFrameUrl ? (
-            <img
-              src={followFrameUrl}
-              alt="Follow-Through Phase Frame"
-              className="w-full rounded-md mb-4"
-            />
-          ) : (
-            <p className="text-gray-500 mb-4">No follow-through frame available</p>
-          )}
-          {renderMetrics(followMetrics)}
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Coach Feedback</h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Priority form adjustments from the analysis pipeline
+                  </p>
+                </div>
+              </div>
+
+              {analysisData.form_feedback && analysisData.form_feedback.length > 0 ? (
+                <div className="space-y-3">
+                  {analysisData.form_feedback.map((item, index) => (
+                    <FeedbackItem key={index} feedback={item} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-zinc-500">No feedback messages available.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <PhaseCard title="Setup" image={setupFrameUrl} metricPairs={setupMetrics} />
+            <PhaseCard title="Release" image={releaseFrameUrl} metricPairs={releaseMetrics} />
+            <PhaseCard title="Follow-through" image={followFrameUrl} metricPairs={followMetrics} />
+          </div>
         </div>
       </div>
     </div>

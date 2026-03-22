@@ -12,7 +12,8 @@ from .analysis import analyse_video
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
 
-BASE_URL = "http://172.25.12.159:8080"
+# BASE_URL = "http://172.25.12.159:8080"
+BASE_URL = "http://127.0.0.1:8080"
 
 VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
