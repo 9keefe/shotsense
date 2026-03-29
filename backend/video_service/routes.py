@@ -9,6 +9,7 @@ from datetime import datetime
 from flask import jsonify, request, send_from_directory, session
 from db_schema import db, Analysis, Session as VideoSession, ShotAnalysis
 from .analysis import analyse_video
+from .metric_explanations import METRIC_EXPLANATIONS
 from .session_analysis import VIDEO_FOLDER as SESSION_VIDEO_FOLDER, process_session_upload
 from .config import OPT_SETTINGS, FEEDBACK_MESSAGES, FEEDBACK_COLS
 
@@ -111,6 +112,8 @@ def upload_video():
       "message": "Analysis complete",
       "analysis_id": new_analysis.id,
       "metrics": parsed_metrics,
+      "metric_explanations": parse_metric_explanations(),
+      "metric_ranges": parse_metric_ranges(),
       "make_probability": make_probability,
       "form_feedback": form_feedback,
       "originalVideoUrl": base_url + f"ORIGINAL_{unique_hash}.mp4",
@@ -172,6 +175,8 @@ def get_analyses():
       "follow_frame_url": analysis.follow_frame_url,
       "make_probability": analysis.make_probability,
       "metrics": json.loads(analysis.metrics_json),
+      "metric_explanations": parse_metric_explanations(),
+      "metric_ranges": parse_metric_ranges(),
       "form_feedback": json.loads(analysis.form_feedback_json) 
     })
   
@@ -197,6 +202,8 @@ def get_analysis(analysis_id):
     "release_frame_url": analysis.release_frame_url,
     "follow_frame_url": analysis.follow_frame_url,
     "metrics": json.loads(analysis.metrics_json),
+    "metric_explanations": parse_metric_explanations(),
+    "metric_ranges": parse_metric_ranges(),
     "make_probability": analysis.make_probability,
     "form_feedback": json.loads(analysis.form_feedback_json),
     "created_at": analysis.created_at.isoformat()
@@ -276,6 +283,8 @@ def get_shot(shot_id):
     "release_frame_url": shot.release_frame_url,
     "follow_frame_url": shot.follow_frame_url,
     "metrics": json.loads(shot.metrics_json),
+    "metric_explanations": parse_metric_explanations(),
+    "metric_ranges": parse_metric_ranges(),
     "make_probability": shot.make_probability,
     "form_feedback": json.loads(shot.form_feedback_json),
     "created_at": shot.created_at.isoformat()
@@ -517,4 +526,29 @@ def parse_all_metrics(metrics_dict):
     for key, value in metrics_dict.items():
         parsed_key = parse_metric(key)
         parsed[parsed_key] = value
+    return parsed
+
+def parse_metric_explanations():
+    parsed = {}
+    for key, explanation in METRIC_EXPLANATIONS.items():
+        parsed_key = parse_metric(key)
+        parsed[parsed_key] = explanation
+    return parsed
+
+def parse_metric_ranges():
+    parsed = {}
+    for settings in OPT_SETTINGS.values():
+        orig_metric = settings.get("orig")
+        min_value = settings.get("min")
+        max_value = settings.get("max")
+
+        if not orig_metric:
+            continue
+
+        parsed_key = parse_metric(orig_metric)
+        parsed[parsed_key] = {
+            "min": min_value,
+            "max": max_value,
+            "has_range": min_value is not None and max_value is not None,
+        }
     return parsed
