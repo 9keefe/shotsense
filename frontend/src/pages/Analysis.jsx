@@ -18,11 +18,19 @@ export default function Analysis() {
         if (initialData) {
           setAnalysisData(initialData);
         } else {
-          const response = await axios.get(
-            `${BACKEND_BASE_URL}/analyses/${id}`,
-            { withCredentials: true }
-          );
-          setAnalysisData(response.data);
+          try {
+            const shotResponse = await axios.get(
+              `${BACKEND_BASE_URL}/shots/${id}`,
+              { withCredentials: true }
+            );
+            setAnalysisData(shotResponse.data);
+          } catch (shotError) {
+            const legacyResponse = await axios.get(
+              `${BACKEND_BASE_URL}/analyses/${id}`,
+              { withCredentials: true }
+            );
+            setAnalysisData(legacyResponse.data);
+          }
         }
       } catch (error) {
         console.error("Error loading analysis:", error);
@@ -162,7 +170,7 @@ export default function Analysis() {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Shot Replay</h2>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-400">
-                  Session Video
+                  Shot Video
                 </span>
               </div>
 

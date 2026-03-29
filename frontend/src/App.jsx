@@ -5,6 +5,7 @@ import Signin from "./pages/Signin";
 import Home from "./pages/Home";
 import Record from "./pages/Record";
 import Analysis from "./pages/Analysis";
+import SessionDetail from "./pages/SessionDetail";
 import Profile from "./pages/Profile";
 import Welcome from "./pages/Welcome";
 import Signup from "./pages/Signup";
@@ -20,6 +21,7 @@ function App() {
         <Route path="/" element={<Welcome />} />
         <Route path="/home" element={<Home />} />
         <Route path="/record" element={<Record />} />
+        <Route path="/sessions/:id" element={<SessionDetail />} />
         <Route path="/analysis/:id" element={<Analysis />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/signin" element={<Signin />} />

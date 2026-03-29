@@ -51,6 +51,7 @@ class Session(db.Model):
   status = db.Column(db.String(20), nullable=False, default="processing")
   original_video_url = db.Column(db.String(512), nullable=False)
   shot_count = db.Column(db.Integer, nullable=False, default=0)
+  total_frames = db.Column(db.Integer)
   processing_error = db.Column(db.Text)
 
   user = db.relationship("User", back_populates="sessions")

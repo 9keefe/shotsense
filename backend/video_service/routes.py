@@ -246,6 +246,7 @@ def get_session(session_id):
     "shooting_arm": session_record.shooting_arm,
     "shot_count": session_record.shot_count,
     "original_video_url": session_record.original_video_url,
+    "total_frames": session_record.total_frames,
     "processing_error": session_record.processing_error,
     "shots": [serialize_shot_summary(shot) for shot in session_record.shots],
   }), 200

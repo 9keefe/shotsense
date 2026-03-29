@@ -9,7 +9,7 @@ import {
 
 export default function MyVideos() {
   const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
-  const [analyses, setAnalyses] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -21,16 +21,16 @@ export default function MyVideos() {
           withCredentials: true,
         });
 
-        const analysesRes = await axios.get(`${BACKEND_BASE_URL}/get-analyses`, {
+        const sessionsRes = await axios.get(`${BACKEND_BASE_URL}/sessions`, {
           withCredentials: true,
         });
 
-        setAnalyses(analysesRes.data);
+        setSessions(sessionsRes.data);
       } catch (err) {
         if (err.response?.status === 401) {
           navigate("/signin");
         } else {
-          setError("Failed to load analysis videos. Please try again later.");
+          setError("Failed to load sessions. Please try again later.");
         }
       } finally {
         setLoading(false);
@@ -88,7 +88,7 @@ export default function MyVideos() {
           </button>
         </div>
 
-        {analyses.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
               <FilmIcon className="h-7 w-7 text-zinc-300" />
@@ -111,10 +111,10 @@ export default function MyVideos() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {analyses.map((analysis, index) => (
+            {sessions.map((session, index) => (
               <button
-                key={analysis.id}
-                onClick={() => navigate(`/analysis/${analysis.id}`)}
+                key={session.id}
+                onClick={() => navigate(`/sessions/${session.id}`)}
                 className="group rounded-[2rem] border border-white/10 bg-white/5 p-5 text-left backdrop-blur-xl transition hover:bg-white/[0.07] hover:-translate-y-0.5"
               >
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_220px]">
@@ -125,7 +125,7 @@ export default function MyVideos() {
                       </div>
 
                       <h3 className="text-xl font-semibold text-white">
-                        {new Date(analysis.created_at).toLocaleDateString(
+                        {new Date(session.created_at).toLocaleDateString(
                           "en-US",
                           {
                             month: "short",
@@ -135,6 +135,10 @@ export default function MyVideos() {
                         )}
                       </h3>
 
+                      <p className="mt-2 text-sm text-zinc-400">
+                        Status: {session.status} · Shots: {session.shot_count}
+                      </p>
+
                       {/* <p className="mt-2 text-sm leading-6 text-zinc-400">
                         Open the full breakdown to review video replay, coaching
                         feedback, and phase-level shooting metrics.
@@ -142,22 +146,28 @@ export default function MyVideos() {
                     </div>
 
                     <div className="mt-6 flex items-center gap-2 text-sm text-zinc-400 group-hover:text-white">
-                      View analysis
+                      View session
                       <ArrowRightIcon className="h-4 w-4" />
                     </div>
                   </div>
 
                   <div className="relative h-48 overflow-hidden rounded-3xl border border-white/10 bg-black">
-                    <video
-                      src={analysis.video_url}
-                      className="h-full w-full object-cover"
-                      muted
-                      onMouseOver={(e) => e.target.play()}
-                      onMouseOut={(e) => {
-                        e.target.pause();
-                        e.target.currentTime = 0;
-                      }}
-                    />
+                    {session.preview_video_url ? (
+                      <video
+                        src={session.preview_video_url}
+                        className="h-full w-full object-cover"
+                        muted
+                        onMouseOver={(e) => e.target.play()}
+                        onMouseOut={(e) => {
+                          e.target.pause();
+                          e.target.currentTime = 0;
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                        No preview yet
+                      </div>
+                    )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   </div>
                 </div>

@@ -99,6 +99,8 @@ def process_session_upload(file, user_id, shooting_arm="RIGHT"):
   if not original_file_path:
     raise ValueError("Failed to save session upload")
 
+  total_frames = get_video_total_frames(original_file_path)
+
   session_record = VideoSession(
     user_id=user_id,
     hashed_filename=session_hash,
@@ -106,6 +108,7 @@ def process_session_upload(file, user_id, shooting_arm="RIGHT"):
     status="processing",
     original_video_url=build_session_base_url(user_id, session_hash) + f"ORIGINAL_{session_hash}.mp4",
     shot_count=0,
+    total_frames=total_frames,
     processing_error=None,
     created_at=datetime.utcnow(),
   )
@@ -198,6 +201,17 @@ def save_session_upload(file, user_id):
   file.save(original_path)
 
   return original_path, session_hash
+
+
+def get_video_total_frames(video_path):
+  cap = cv2.VideoCapture(video_path)
+  if not cap.isOpened():
+    raise ValueError(f"Could not open uploaded session video: {video_path}")
+
+  try:
+    return int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+  finally:
+    cap.release()
 
 
 def create_session_folder(user_id, session_hash):

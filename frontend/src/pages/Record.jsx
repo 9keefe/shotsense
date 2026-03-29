@@ -46,14 +46,7 @@ export default function Record() {
       setIsLoading(false);
       setIsModalOpen(false);
 
-      navigate(`/analysis/${data.analysis_id}`, {
-        state: {
-          video_url: data.originalVideoUrl,
-          metrics: data.metrics,
-          make_probability: data.make_probability,
-          form_feedback: data.form_feedback
-        },
-      });
+      navigate(`/sessions/${data.session_id}`);
 
     } catch (err) {
       setIsLoading(false);
@@ -257,7 +250,7 @@ export default function Record() {
           <div className="rounded-[2rem] border border-white/10 bg-[#111214] px-8 py-6 text-center shadow-[0_20px_80px_rgba(0,0,0,0.55)]">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white" />
             <p className="mt-4 text-sm text-zinc-300">
-              Processing video and generating analysis...
+              Uploading session, splitting shots, and generating analysis...
             </p>
           </div>
         </div>

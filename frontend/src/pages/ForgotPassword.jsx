@@ -10,7 +10,7 @@ export default function ForgotPassword() {
         <div className="grid w-full grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]">
           <div className="flex flex-col justify-center">
             <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
-              Shot Sense
+              ShotSense
             </p>
             <h1 className="mt-4 text-5xl font-semibold tracking-tight md:text-6xl">
               Reset access.
