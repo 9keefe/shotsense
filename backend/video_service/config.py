@@ -1,10 +1,17 @@
+import os
+
+
+BASE_URL = "http://127.0.0.1:8080"
+VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "videos")
+
+
 OPT_SETTINGS = {
     "opt_S_avg_knee_bend": {"orig": "S_avg_knee_bend", "min": 120, "max": 160},
     "opt_S_avg_body_lean": {"orig": "S_avg_body_lean", "min": -2, "max": 4},
     "opt_S_avg_head_tilt": {"orig": "S_avg_head_tilt", "min": 50, "max": 65},
     "opt_S_avg_elbow_angle": {"orig": "S_avg_elbow_angle", "min": 45, "max": 90},
     "opt_R_avg_hip_angle": {"orig": "R_avg_hip_angle", "min": 160, "max": 185},
-    "opt_R_avg_elbow_angle": {"orig": "R_avg_elbow_angle", "min": 95, "max": 145},
+	  "opt_R_avg_elbow_angle": {"orig": "R_avg_elbow_angle", "min": 95, "max": 145},
     "opt_R_avg_knee_bend": {"orig": "R_avg_knee_bend", "min": 154, "max": 166},
     "opt_R_max_wrist_height": {"orig": "R_max_wrist_height", "min": 3.4, "max": 7},
     "opt_R_avg_shoulder_angle": {"orig": "R_avg_shoulder_angle", "min": 15, "max": 55},
@@ -23,7 +30,7 @@ OPT_SETTINGS = {
 }
 
 FEEDBACK_MESSAGES = {
-  "opt_S_avg_knee_bend": {
+"opt_S_avg_knee_bend": {
     "low": {
       "short": "Too much knee bend during setup",
       "detailed": "You're bending your knees too much during the setup phase, this can disrupt your shot rhythm and lead to inconsistent power transfer and accuracy. Try to bend your knees less for a smoother shot!"

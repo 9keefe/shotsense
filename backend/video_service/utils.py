@@ -3,7 +3,10 @@ import cv2
 
 
 class ShootingAnalyzer:
-    """Shot phase/metric analyzer used by the backend video pipeline."""
+    """
+    Shot phase/metric analyzer used by the backend video pipeline.
+    Acts as a State Machine that transitions from Null -> Setup -> Release -> Follow-through -> Complete.
+    """
 
     PHASE_NULL = "Null"
     PHASE_SETUP = "Setup"
@@ -35,7 +38,9 @@ class ShootingAnalyzer:
         self.shot_ended = False
 
     def _create_metrics_template(self):
-        """Return fresh metrics structure for all phases."""
+        """
+        Returns a fresh, empty dictionary to store the math metrics for each phase of the shot.
+        """
         return {
             self.PHASE_SETUP: {
                 "total_knee_bend": 0,
@@ -84,7 +89,8 @@ class ShootingAnalyzer:
             },
         }
 
-    # calculates the angle of a joint from points a, b ,c
+    # --- BIOMECHANICAL MATH HELPERS ---
+
     def calculate_angle(self, a, b, c):
         a = np.array([a.x, a.y])
         b = np.array([b.x, b.y])
@@ -98,7 +104,6 @@ class ShootingAnalyzer:
 
         return np.degrees(angle)
 
-    # calculates the angle of the shoulder, relative to the body. - if behind, + if in front
     def calculate_shoulder_angle(self, hip, shoulder, elbow):
         base_angle = self.calculate_angle(hip, shoulder, elbow)
 
@@ -116,7 +121,6 @@ class ShootingAnalyzer:
         else:
             return -base_angle
 
-    # calculates the head tilt angle
     def calculate_head_angle(self, eye, ear):
         dx = eye.x - ear.x
         dy = eye.y - ear.y
@@ -125,7 +129,6 @@ class ShootingAnalyzer:
         head_angle = -np.degrees(angle_rad)
         return head_angle
 
-    # calculates the angle of the body lean relative to the y axis
     def calculate_body_lean(self, shoulder, hip):
         dx = shoulder.x - hip.x
         dy = shoulder.y - hip.y
@@ -150,7 +153,6 @@ class ShootingAnalyzer:
         else:
             return -out
 
-    # calculates the angle of the wrist
     def calculate_wrist_angle(self, elbow, wrist, index_finger):
         wrist_point = np.array([wrist.x, wrist.y])
         index_point = np.array([index_finger.x, index_finger.y])
@@ -180,19 +182,15 @@ class ShootingAnalyzer:
     # calculates the height of wrist relative to the eye, normalized to torso length
     def calculate_wrist_height(self, wrist, eye, shoulder, hip):
         torso_length = abs(shoulder.y - hip.y)
-
         wrist_eye_diff = eye.y - wrist.y
         normalized = wrist_eye_diff / torso_length if torso_length != 0 else 0
-
         return normalized * 10
 
     # calculates the height of elbow relative to the eye, normalized to torso length
     def calculate_elbow_eye_height(self, elbow, eye, shoulder, hip):
         torso_length = abs(shoulder.y - hip.y)
         elbow_eye_diff = eye.y - elbow.y
-
         normalized = elbow_eye_diff / torso_length if torso_length != 0 else 0
-
         return (elbow_eye_diff * 1000) / 2
 
     def calculate_release_setpoint(self, index_finger, eye):
@@ -206,6 +204,8 @@ class ShootingAnalyzer:
 
         out = (diff * 1000) / 2
         return out
+
+    # --- METRIC ACCUMULATORS ---
 
     def _accumulate_setup_metrics(self, knee_angle, body_lean, head_tilt, elbow_angle):
         setup_metrics = self.metrics[self.PHASE_SETUP]
@@ -269,7 +269,14 @@ class ShootingAnalyzer:
             follow_through_metrics["head_tilt"] = head_tilt
         follow_through_metrics["stored"] = True
 
+
+    # --- STATE MACHINE HANDLERS ---
+
     def _handle_null_phase(self, shoulder_angle, elbow_angle, knee_angle, head_tilt, body_lean, forearm_deviation):
+        """
+        Idle State. Checks if the player's angles indicate they are getting into a shooting stance.
+        If conditions are met, transitions the state to PHASE_SETUP.
+        """
         self.allow_follow_through = False
 
         if self.shot_completed is False:
@@ -305,6 +312,11 @@ class ShootingAnalyzer:
         self.previous_shoulder_angle = shoulder_angle
 
     def _handle_setup_phase(self, elbow_angle, shoulder_angle, knee_angle, forearm_deviation, hip_angle, head_tilt, body_lean, landmarks):
+        """
+        Setup State. When player is generating power and moving ball upwards.
+        Accumulates metrics while the player is bending their knees and preparing.
+        Checks if upward arm/body motion has started. If so, transitions to PHASE_RELEASE.
+        """
         setup_metrics = self.metrics[self.PHASE_SETUP]
         setup_metrics["frame_count"] += 1
 
@@ -336,6 +348,10 @@ class ShootingAnalyzer:
             self._accumulate_setup_metrics(knee_angle, body_lean, head_tilt, elbow_angle)
 
     def _handle_release_phase(self, elbow_angle, shoulder_angle, knee_angle, wrist_angle, hip_angle, head_tilt, body_lean, forearm_deviation, landmarks):
+        """
+        Release State. Tracks the shot leaving the hands. (Forward motion)
+        Checks for arm extension and wrist flick. If detected, transitions to PHASE_FOLLOW_THROUGH.
+        """
         release_metrics = self.metrics[self.PHASE_RELEASE]
         release_metrics["frame_count"] += 1
 
@@ -381,6 +397,10 @@ class ShootingAnalyzer:
             self.allow_follow_through = True
 
     def _handle_follow_through_phase(self, shoulder_angle, elbow_angle):
+        """
+        Follow-Through State. Waits for the arm to drop back down, or for max frames to pass.
+        Once complete, flags the shot as ended and transitions to PHASE_COMPLETE.
+        """
         self.shot_completed = True
         self.follow_through_frame_count += 1
 
@@ -394,8 +414,13 @@ class ShootingAnalyzer:
             self.allow_follow_through = False
             self.shot_ended = True
 
-    # detect what phase the shooter is currently in
+    # --- MAIN ENTRY POINT ---
+
     def detect_phase(self, angles, landmarks):
+        """
+        Called every frame. Handles different phases and runs the appropriate logic.
+        Checks the current phase, routes the data to the correct handler, and returns the updated phase.
+        """
         if self.current_phase == self.PHASE_COMPLETE:
             return self.current_phase
 
@@ -420,8 +445,22 @@ class ShootingAnalyzer:
         return self.current_phase
 
     def reset_metrics(self):
-        self.__init__(self.SHOOTING_ARM, self.delta_t)
+        """
+        Cleanly clears the state trackers so the class can analyze a brand new shot.
+        """
         self.shot_completed = False
+        self.follow_through_frame_count = 0
+        self.metrics = self._create_metrics_template()
+        self.current_phase = self.PHASE_NULL
+        self.release_detected = False
+        self.release_angle = None
+        self.allow_follow_through = False
+        self.previous_knee_angle = None
+        self.previous_shoulder_angle = None
+        self.knee_velocities = []
+        self.shot_ended = False
+
+    # --- DISPLAY HELPERS ---
 
     def display_debug_metrics(self, frame, angles, phase):
         font = cv2.FONT_HERSHEY_SIMPLEX

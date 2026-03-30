@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -27,7 +27,7 @@ class Analysis(db.Model):
   user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
   hashed_filename = db.Column(db.String(255), nullable=False)
   metrics_json = db.Column(db.Text, nullable=False)
-  created_at = db.Column(db.DateTime, default=datetime.utcnow)
+  created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
   make_probability = db.Column(db.Float)
   form_feedback_json = db.Column(db.Text)
   video_url = db.Column(db.String(512))
@@ -47,7 +47,7 @@ class Session(db.Model):
   user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
   hashed_filename = db.Column(db.String(255), nullable=False, unique=True)
   shooting_arm = db.Column(db.String(10), nullable=False)
-  created_at = db.Column(db.DateTime, default=datetime.utcnow)
+  created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
   status = db.Column(db.String(20), nullable=False, default="processing")
   original_video_url = db.Column(db.String(512), nullable=False)
   shot_count = db.Column(db.Integer, nullable=False, default=0)
@@ -71,7 +71,7 @@ class ShotAnalysis(db.Model):
   shot_index = db.Column(db.Integer, nullable=False)
   start_frame = db.Column(db.Integer, nullable=False)
   end_frame = db.Column(db.Integer, nullable=False)
-  created_at = db.Column(db.DateTime, default=datetime.utcnow)
+  created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
   metrics_json = db.Column(db.Text, nullable=False)
   make_probability = db.Column(db.Float)
   form_feedback_json = db.Column(db.Text, nullable=False)

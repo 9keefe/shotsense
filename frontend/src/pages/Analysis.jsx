@@ -25,19 +25,11 @@ export default function Analysis() {
         if (initialData) {
           setAnalysisData(initialData);
         } else {
-          try {
-            const shotResponse = await axios.get(
-              `${BACKEND_BASE_URL}/shots/${id}`,
-              { withCredentials: true }
-            );
-            setAnalysisData(shotResponse.data);
-          } catch (shotError) {
-            const legacyResponse = await axios.get(
-              `${BACKEND_BASE_URL}/analyses/${id}`,
-              { withCredentials: true }
-            );
-            setAnalysisData(legacyResponse.data);
-          }
+          const shotResponse = await axios.get(
+            `${BACKEND_BASE_URL}/shots/${id}`,
+            { withCredentials: true }
+          );
+          setAnalysisData(shotResponse.data);
         }
       } catch (error) {
         console.error("Error loading analysis:", error);
